@@ -1,0 +1,5 @@
+<div id="msg-div" hx-swap-oob="true" class="alert alert-danger">{{ message }}</div>
+
+{% include 'fulabra_app/partials/input_field.html' with field_name='username' value=username_val %}
+{% include 'fulabra_app/partials/input_field.html' with field_name='email' type='email' value=email_val %}
+{% include 'fulabra_app/partials/input_field.html' with field_name='confirmation' type='password' value=confirm_value %}
