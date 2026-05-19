@@ -6,7 +6,7 @@
 
   <div id="msg-div"></div>
 
-  <form hx-post="{% url 'register' %}" hx-swap="none" hx-on::after-settle="focusInvalidField()">
+  <form hx-post="{% url 'register' %}" hx-swap="none" >
     {% csrf_token %}
     <div class="form-group">
       <input id="username-field" class="form-control" autofocus type="text" name="username" placeholder="Username" />
@@ -22,6 +22,5 @@
     </div>
     <input class="btn btn-primary" type="submit" value="Register" />
   </form>Already have an account? <a href="{% url 'login' %}">Log In here.</a>
-
   
 {% endblock %}
