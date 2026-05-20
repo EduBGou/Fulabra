@@ -1,0 +1,12 @@
+{% extends 'fulabra_app/layout.html' %}
+{% load static %}
+
+{% block body %}
+  <div id="lobby-container" hx-ext="ws" ws-connect="/ws/lobby/{{ lobby_code }}/">
+    <p>Current players connected in the Lobby: {{ lobby_code }}</p>
+
+    <div id="player-list"></div>
+  </div>
+
+  <a href="{% url 'index' %}">Quit</a>
+{% endblock %}

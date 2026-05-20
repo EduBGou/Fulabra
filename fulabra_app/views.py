@@ -1,14 +1,48 @@
 from django.db import IntegrityError
 
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib.auth import authenticate, login, logout
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.urls import reverse
 
-from fulabra_app.models import User
+from .models import *
 
 def index(request: HttpRequest):
     return render(request, "fulabra_app/index.html")
+
+
+def check_lobby(request: HttpRequest):
+    lobby_code = request.POST.get("lobby_code")
+
+    try:
+        lobby = LobbyGroup.objects.get(code=lobby_code)
+        if lobby.players.count() >= 3:
+            context = {"message": f'The lobby with code "{lobby_code}" is full.'}
+            return render(request, "fulabra_app/partials/error_message.html", context)
+
+    except LobbyGroup.DoesNotExist:
+        context = {"message": f'There isn\'t a lobby with code "{lobby_code}"'}
+        return render(request, "fulabra_app/partials/error_message.html", context)
+
+    redirect_url = reverse("lobby_room", kwargs={"lobby_code": lobby_code})
+
+    if request.headers.get("HX-Request"):
+        response = HttpResponse(status=200)
+        response["HX-Redirect"] = redirect_url
+        return response
+
+    return redirect(redirect_url)
+
+
+def lobby_room(request: HttpRequest, lobby_code: str):
+    lobby = get_object_or_404(LobbyGroup, code=lobby_code)
+    context = {
+        "lobby_code": lobby.code,
+        "players": lobby.players.all(),
+        "amt_players": lobby.players.count(),
+    }
+
+    return render(request, "fulabra_app/lobby.html", context)
 
 
 def login_view(request: HttpRequest):

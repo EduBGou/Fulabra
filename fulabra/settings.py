@@ -56,6 +56,12 @@ TEMPLATES = [
 
 ASGI_APPLICATION = "fulabra.asgi.application"
 
+CHANNEL_LAYERS = {
+    'default': {
+        "BACKEND": "channels.layers.InMemoryChannelLayer"
+    }
+}
+
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 

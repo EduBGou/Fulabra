@@ -1,0 +1,8 @@
+<div id="player-list" hx-swap-oob="true">
+  <span>{{ amt_players }}</span>
+  <ul>
+    {% for p in players %}
+      <li>{{ p.username }}</li>
+    {% endfor %}
+  </ul>
+</div>
