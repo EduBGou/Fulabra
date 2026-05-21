@@ -1,5 +1,8 @@
 <div id="player-list" hx-swap-oob="true">
-  <span>{{ amt_players }}</span>
+  {% if user not in players %}
+    <p>YOU AREN'T IN THIS LOBBY!</p>
+  {% endif %}
+  <p>There is {{ players.count }}/3 players connected in the lobby "{{ lobby_code }}".</p>
   <ul>
     {% for p in players %}
       <li>{{ p.username }}</li>

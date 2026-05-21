@@ -7,12 +7,14 @@ from django.urls import reverse
 
 from .models import *
 
+
 def index(request: HttpRequest):
     return render(request, "fulabra_app/index.html")
 
 
-def check_lobby(request: HttpRequest):
-    lobby_code = request.POST.get("lobby_code")
+def check_lobby(request: HttpRequest, lobby_code: str = ""):
+    if lobby_code == "":
+        lobby_code = request.POST.get("lobby_code")
 
     try:
         lobby = LobbyGroup.objects.get(code=lobby_code)
@@ -21,7 +23,7 @@ def check_lobby(request: HttpRequest):
             return render(request, "fulabra_app/partials/error_message.html", context)
 
     except LobbyGroup.DoesNotExist:
-        context = {"message": f'There isn\'t a lobby with code "{lobby_code}"'}
+        context = {"message": f'There isn\'t a lobby with code "{lobby_code}".'}
         return render(request, "fulabra_app/partials/error_message.html", context)
 
     redirect_url = reverse("lobby_room", kwargs={"lobby_code": lobby_code})
@@ -38,8 +40,9 @@ def lobby_room(request: HttpRequest, lobby_code: str):
     lobby = get_object_or_404(LobbyGroup, code=lobby_code)
     context = {
         "lobby_code": lobby.code,
-        "players": lobby.players.all(),
-        "amt_players": lobby.players.count(),
+        "invite": request.build_absolute_uri(
+            reverse("lobby_invite", kwargs={"lobby_code": lobby.code})
+        ),
     }
 
     return render(request, "fulabra_app/lobby.html", context)

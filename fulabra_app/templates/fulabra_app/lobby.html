@@ -2,11 +2,29 @@
 {% load static %}
 
 {% block body %}
-  <div id="lobby-container" hx-ext="ws" ws-connect="/ws/lobby/{{ lobby_code }}/">
-    <p>Current players connected in the Lobby: {{ lobby_code }}</p>
+  {% if user.is_authenticated %}
+    <div id="lobby-container" hx-ext="ws" ws-connect="/ws/lobby/{{ lobby_code }}/">
+      <div id="player-list"></div>
+    </div>
+    <button id="btn-invite" class="btn btn-primary" data-invite-link="{{ invite }}">Copy Invite Link</button>
+  {% else %}
+    <div class="alert alert-danger">Currently, you need to be logged in to enter in the lobby "{{ lobby_code }}".</div>
+  {% endif %}
 
-    <div id="player-list"></div>
-  </div>
+  <a href="{% url 'index' %}"><button class="btn btn-danger">Quit</button></a>
 
-  <a href="{% url 'index' %}">Quit</a>
+  <script>
+    const inviteBtn = document.querySelector('#btn-invite')
+    if (inviteBtn) {
+      const originalText = inviteBtn.innerText
+      inviteBtn.addEventListener('click', function () {
+        navigator.clipboard.writeText(inviteBtn.dataset.inviteLink).then(function () {
+          inviteBtn.innerHTML = 'Copied! ✓'
+          setTimeout(function () {
+            inviteBtn.innerText = originalText
+          }, 1800)
+        })
+      })
+    }
+  </script>
 {% endblock %}

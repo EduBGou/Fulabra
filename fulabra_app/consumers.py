@@ -2,6 +2,7 @@ from channels.generic.websocket import WebsocketConsumer
 from django.template.loader import render_to_string
 from django.shortcuts import get_object_or_404
 from asgiref.sync import async_to_sync
+from django.urls import reverse
 from .models import *
 
 
@@ -38,7 +39,11 @@ class LobbyConsumer(WebsocketConsumer):
         async_to_sync(self.channel_layer.group_send)(self.lobby_code, event)
 
     def lobby_update(self, event):
-        context = {"lobby_code": self.lobby.code, "players": self.lobby.players.all()}
+        context = {
+            "lobby_code": self.lobby.code,
+            "players": self.lobby.players.all(),
+            "user": self.scope["user"]
+        }
         html = render_to_string(
             "fulabra_app/partials/player_list.html", context=context
         )
