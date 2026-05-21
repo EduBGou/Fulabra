@@ -1,1 +1,4 @@
-<div id="msg-div" hx-swap-oob="true" class="alert alert-danger">{{ message }}</div>
+{% if error_message %}
+  <div id="error_message" hx-swap-oob="true" class="alert alert-danger">{{ error_message }}</div>
+  <div id="lobby-container" hx-swap-oob="delete"></div>
+{% endif %}
