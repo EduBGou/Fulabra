@@ -55,39 +55,33 @@
 
     <h3 class="mb-3">Histórico de Partidas Recentes</h3>
     
-    {% if recent_matches %}
-        <div class="list-group shadow-sm">
-            
-            {% for match in recent_matches %}
-                <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                    
-                    <div>
-                        <small class="text-muted d-block mb-1">{{ match.date_played|date:"d/m/Y H:i" }}</small>
-                        <h6 class="mb-0">
-                            <span class="badge badge-light border">{{ match.player1.username }}</span> vs 
-                            <span class="badge badge-light border">{{ match.player2.username }}</span> vs 
-                            <span class="badge badge-light border">{{ match.player3.username }}</span>
-                        </h6>
-                    </div>
-
-                    <div class="text-right">
-                        {% if match.winner %}
-                            <span class="text-muted small d-block">Vencedor</span>
-                            <strong class="text-success">{{ match.winner.username }}</strong>
-                        {% else %}
-                            <strong class="text-muted">Empate</strong>
-                        {% endif %}
-                    </div>
-                    
+    <div class="list-group shadow-sm">
+        {% for match in recent_matches %}
+            <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                <div>
+                    <small class="text-muted d-block mb-1">{{ match.date_played|date:"d/m/Y H:i" }}</small>
+                    <h6 class="mb-0">
+                        <span class="badge badge-light border">{{ match.player1.username }}</span> vs 
+                        <span class="badge badge-light border">{{ match.player2.username }}</span> vs 
+                        <span class="badge badge-light border">{{ match.player3.username }}</span>
+                    </h6>
                 </div>
-            {% endfor %}
-            
-        </div>
-    {% else %}
-        <div class="alert alert-light text-center border py-4">
-            Este jogador ainda não possui nenhuma partida registrada.
-        </div>
-    {% endif %}
+
+                <div class="text-right">
+                    {% if match.winner %}
+                        <span class="text-muted small d-block">Vencedor</span>
+                        <strong class="text-success">{{ match.winner.username }}</strong>
+                    {% else %}
+                        <strong class="text-muted">Empate</strong>
+                    {% endif %}
+                </div>
+            </div>
+        {% empty %}
+            <div class="list-group-item text-center text-muted py-4">
+                Este jogador ainda não possui nenhuma partida registrada.
+            </div>
+        {% endfor %}
+    </div>
 
 </div>
 {% endblock %}

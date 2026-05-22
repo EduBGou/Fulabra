@@ -1,4 +1,5 @@
 {% extends 'fulabra_app/layout.html' %}
+{% load static %}
 
 {% block body %}
 <div class="container mt-5">
@@ -9,6 +10,19 @@
                     <h4 class="mb-0">Editar Seu Perfil</h4>
                 </div>
                 <div class="card-body">
+
+                    {% if form.errors %}
+                        <div class="alert alert-danger">
+                            <strong>Erro:</strong>
+                            <ul class="mb-0 mt-1">
+                                {% for field, errors in form.errors.items %}
+                                    {% for error in errors %}
+                                        <li>{{ error }}</li>
+                                    {% endfor %}
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    {% endif %}
 
                     <form method="POST">
                         {% csrf_token %}
@@ -42,4 +56,8 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block script %}
+    <script src="{% static 'fulabra_app/scripts/disableSubmitIfUnchanged.js' %}"></script>
 {% endblock %}

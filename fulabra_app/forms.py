@@ -15,4 +15,11 @@ class UserProfileForm(forms.ModelForm):
                 'placeholder': 'avatar.png'
             }), # Futuramente se migrar para um upload de arquivos -> forms.FileInput
         }
+    
+    def clean_nickname(self):
+        nickname = self.cleaned_data.get('nickname')
+
+        if not nickname or len(nickname.strip()) == 0:
+            raise forms.ValidationError("Escolha um apelido válido.")
         
+        return nickname.strip()
