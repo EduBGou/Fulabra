@@ -6,6 +6,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.http import HttpRequest, HttpResponse
 from django.urls import reverse
 
+from .forms import UserProfileForm
 from .models import *
 
 
@@ -135,6 +136,7 @@ def register(request: HttpRequest):
         return render(request, "fulabra_app/register.html")
 
 
+# Perfil do Usuário
 def profile_view(request: HttpRequest, username: str):
     profile_user = get_object_or_404(User, username=username)
     logged_user = request.user
@@ -165,3 +167,22 @@ def profile_view(request: HttpRequest, username: str):
     }
 
     return render(request, "fulabra_app/profile.html", context)
+
+
+# Edição de perfil
+def edit_profile_view(request: HttpRequest):
+    if not request.user.is_authenticated:
+        return redirect('login')
+    
+    logged_user = request.user
+
+    if request.method == 'POST':
+        form = UserProfileForm(request.POST, instance=logged_user)
+
+        if form.is_valid():
+            form.save()
+            return redirect('profile', username=logged_user.username)
+    else:
+        form = UserProfileForm(instance=logged_user)
+    
+    return render(request, "fulabra_app/edit_profile.html", {"form": form})

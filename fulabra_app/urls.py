@@ -12,5 +12,6 @@ urlpatterns = [
         "lobby_invite/<str:lobby_code>/", views.lobby_invite_view, name="lobby_invite"
     ),
     path("lobby/<str:lobby_code>/", views.lobby_room_view, name="lobby_room"),
-    path("profile/<str:username>/", views.profile_view, name="profile")
+    path("profile/<str:username>/", views.profile_view, name="profile"),
+    path("profile/edit", views.edit_profile_view, name="edit_profile"),
 ]

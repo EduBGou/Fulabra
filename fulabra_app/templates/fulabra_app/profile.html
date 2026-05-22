@@ -37,7 +37,7 @@
             <div>
                 {% if user.is_authenticated %}
                     {% if is_owner %}
-                        <a href="#" class="btn btn-outline-primary btn-sm">Editar Perfil</a>
+                        <a href="{% url 'edit_profile' %}" class="btn btn-outline-primary btn-sm">Editar Perfil</a>
                     {% else %}
                         {% if friend_status == 'accepted' %}
                             <span class="badge badge-info p-2">Vocês são amigos ✔</span>
