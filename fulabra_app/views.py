@@ -1,6 +1,7 @@
 from django.db import IntegrityError
+from django.db.models import Q
 
-from django.shortcuts import redirect, render
+from django.shortcuts import redirect, render, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.http import HttpRequest, HttpResponse
 from django.urls import reverse
@@ -132,3 +133,35 @@ def register(request: HttpRequest):
 
     else:
         return render(request, "fulabra_app/register.html")
+
+
+def profile_view(request: HttpRequest, username: str):
+    profile_user = get_object_or_404(User, username=username)
+    logged_user = request.user
+    is_owner = (logged_user==profile_user)
+
+    recent_matches = Match.objects.filter(
+        Q(player1=profile_user)|
+        Q(player2=profile_user)|
+        Q(player3=profile_user)
+    ).order_by('-date_played')[:10]
+
+    friend_status = None
+
+    if not is_owner and logged_user.is_authenticated:
+        friend_request = FriendRequest.objects.filter(
+            Q(from_user=logged_user, to_user=profile_user)|
+            Q(from_user=profile_user, to_user=logged_user)
+        ).first()
+
+        if friend_request:
+            friend_status = friend_request.status
+        
+    context = {
+        "profile_user": profile_user,
+        "is_owner": is_owner,
+        "recent_matches": recent_matches,
+        "friend_status": friend_status
+    }
+
+    return render(request, "fulabra_app/profile.html", context)
