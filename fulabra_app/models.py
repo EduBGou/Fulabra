@@ -5,10 +5,10 @@ from django.contrib.auth.models import AbstractUser
 
 
 characters = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
-length = 8
+length = 6
 
 class LobbyGroup(models.Model):
-    code = models.CharField(max_length=6, unique=True, blank=True)
+    code = models.CharField(max_length=length, unique=True, blank=True)
     leader = models.OneToOneField(
         "User",
         on_delete=models.SET_NULL,
