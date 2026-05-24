@@ -11,5 +11,6 @@ urlpatterns = [
     path(
         "lobby_invite/<str:lobby_code>/", views.lobby_invite_view, name="lobby_invite"
     ),
+    path("create_lobby", views.create_lobby_view, name="create_lobby"),
     path("lobby/<str:lobby_code>/", views.lobby_room_view, name="lobby_room"),
 ]

@@ -12,5 +12,12 @@
       <button class="btn btn-primary" type="submit">Enter</button>
     </div>
   </form>
+
+  <form method="post" action="{% url 'create_lobby' %}" >
+    {% csrf_token %}
+    <div class="form-group">
+      <button class="btn btn-primary" type="submit">Create Lobby</button>
+    </div>
+  </form>
   <div id="error-message"></div>
 {% endblock %}
