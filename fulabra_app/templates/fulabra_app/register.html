@@ -4,8 +4,8 @@
 {% block body %}
   <h2>Register</h2>
 
-  <div id="msg-div"></div>
-
+  
+  <div id="error-message"></div>
   <form hx-post="{% url 'register' %}" hx-swap="none" >
     {% csrf_token %}
     <div class="form-group">

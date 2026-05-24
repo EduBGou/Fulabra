@@ -3,7 +3,7 @@
 
 {% block body %}
   <h2>Lobby #{{ lobby_code }}</h2>
-  <div id="error_message"></div>
+  <div id="error-message"></div>
   {% if not error_message %}
     <div id="lobby-container" hx-ext="ws" ws-connect="/ws/lobby/{{ lobby_code }}/">
       <div id="player-list"></div>
