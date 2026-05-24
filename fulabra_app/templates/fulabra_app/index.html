@@ -2,5 +2,15 @@
 {% load static %}
 
 {% block body %}
-  <div id="msg-div"></div>
+  <h2>Enter in a Lobby</h2>
+  <form hx-post="{% url 'handle_lobby' %}" hx-swap="none">
+    {% csrf_token %}
+    <div class="form-group">
+      <input id="lobby_code" name="lobby_code" class="form-control" type="text" placeholder="code" />
+    </div>
+    <div class="form-group">
+      <button class="btn btn-primary" type="submit">Enter</button>
+    </div>
+  </form>
+  <div id="error-message"></div>
 {% endblock %}

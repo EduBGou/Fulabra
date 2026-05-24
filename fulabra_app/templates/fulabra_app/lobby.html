@@ -1,0 +1,30 @@
+{% extends 'fulabra_app/layout.html' %}
+{% load static %}
+
+{% block body %}
+  <h2>Lobby #{{ lobby_code }}</h2>
+  <div id="error-message"></div>
+  {% if not error_message %}
+    <div id="lobby-container" hx-ext="ws" ws-connect="/ws/lobby/{{ lobby_code }}/">
+      <div id="player-list"></div>
+    </div>
+    <button id="btn-invite" class="btn btn-primary" data-invite-link="{{ invite }}">Copy Invite Link</button>
+  {% endif %}
+
+  <a href="{% url 'index' %}"><button class="btn btn-danger">Quit</button></a>
+
+  <script>
+    const inviteBtn = document.querySelector('#btn-invite')
+    if (inviteBtn) {
+      const originalText = inviteBtn.innerText
+      inviteBtn.addEventListener('click', function () {
+        navigator.clipboard.writeText(inviteBtn.dataset.inviteLink).then(function () {
+          inviteBtn.innerHTML = 'Copied! ✓'
+          setTimeout(function () {
+            inviteBtn.innerText = originalText
+          }, 1800)
+        })
+      })
+    }
+  </script>
+{% endblock %}

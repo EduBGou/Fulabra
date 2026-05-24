@@ -2,13 +2,64 @@ from django.db import IntegrityError
 
 from django.shortcuts import redirect, render
 from django.contrib.auth import authenticate, login, logout
-from django.http import HttpRequest, HttpResponse, JsonResponse
+from django.http import HttpRequest, HttpResponse
 from django.urls import reverse
 
-from fulabra_app.models import User
+from .models import *
 
-def index(request: HttpRequest):
+
+def index_view(request: HttpRequest):
     return render(request, "fulabra_app/index.html")
+
+
+def handle_lobby_view(request: HttpRequest):
+    lobby_code = request.POST.get("lobby_code")
+
+    if len(lobby_code) > 8:
+        try:
+            return redirect(lobby_code)
+        except:
+            context = {"error_message": f"This invite isn't valid."}
+            return render(request, "fulabra_app/partials/error_message.html", context)
+    return redirect("lobby_invite", lobby_code=lobby_code)
+
+
+def lobby_invite_view(request: HttpRequest, lobby_code: str = ""):
+    try:
+        lobby = LobbyGroup.objects.get(code=lobby_code)
+        if lobby.players.count() >= 3:
+            context = {"error_message": f'The lobby with code "{lobby_code}" is full.'}
+            return render(request, "fulabra_app/partials/error_message.html", context)
+
+    except LobbyGroup.DoesNotExist:
+        context = {"error_message": f'There isn\'t a lobby with code "{lobby_code}".'}
+        return render(request, "fulabra_app/partials/error_message.html", context)
+
+    lobby_url = reverse("lobby_room", kwargs={"lobby_code": lobby_code})
+
+    if request.headers.get("HX-Request"):
+        response = HttpResponse(status=200)
+        response["HX-Redirect"] = lobby_url
+        return response
+
+    return redirect(lobby_url)
+
+
+def lobby_room_view(request: HttpRequest, lobby_code: str):
+    try:
+        lobby = LobbyGroup.objects.get(code=lobby_code)
+        context = {
+            "lobby_code": lobby.code,
+            "invite": request.build_absolute_uri(
+                reverse("lobby_invite", kwargs={"lobby_code": lobby.code})
+            ),
+        }
+    except:
+        context = {
+            "error_message": "This invite isn't valid.",
+        }
+
+    return render(request, "fulabra_app/lobby.html", context)
 
 
 def login_view(request: HttpRequest):
@@ -24,7 +75,7 @@ def login_view(request: HttpRequest):
             return render(
                 request,
                 "fulabra_app/login.html",
-                {"message": "Invalid username and/or password."},
+                {"error_message": "Invalid username and/or password."},
             )
     return render(request, "fulabra_app/login.html")
 
@@ -49,7 +100,7 @@ def register(request: HttpRequest):
         if password != confirmation:
             context["error"] = "confirmation"
             context["confirm_value"] = ""
-            context["message"] = "Passwords must match."
+            context["error_message"] = "Passwords must match."
             return render(
                 request,
                 "fulabra_app/partials/register_message.html",
@@ -61,10 +112,10 @@ def register(request: HttpRequest):
 
             error_msg = str(e).lower()
             if "username" in error_msg:
-                context["message"] = "Username already taken."
+                context["error_message"] = "Username already taken."
                 context["error"] = "username"
             else:
-                context["message"] = "This email is already registered."
+                context["error_message"] = "This email is already registered."
                 context["error"] = "email"
 
             return render(
