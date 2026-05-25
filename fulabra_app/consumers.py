@@ -1,8 +1,10 @@
+import threading
+
 from channels.generic.websocket import WebsocketConsumer
 from django.template.loader import render_to_string
 from django.shortcuts import get_object_or_404
 from asgiref.sync import async_to_sync
-# from django.urls import reverse
+
 from .models import *
 
 
@@ -25,13 +27,14 @@ class LobbyConsumer(WebsocketConsumer):
         else:
             context = {
                 "error_message": f"YOU CANNOT ENTER IN THIS LOBBY: It is full or the player is not logged in.",
-                "lobby_code": self.lobby.code,
+                "current_lobby": self.lobby,
                 "players": self.lobby.players.all(),
                 "user": self.scope["user"],
             }
             html = render_to_string(
                 "fulabra_app/partials/error_message.html", context=context
             )
+            print(f"DEBUG: Context data is -> {self.lobby}")
             self.send(text_data=html)
             self.close()
 
@@ -45,12 +48,37 @@ class LobbyConsumer(WebsocketConsumer):
             self.user.current_lobby = None
             self.user.save()
 
-        event = {"type": self.lobby_update.__name__}
-        async_to_sync(self.channel_layer.group_send)(self.lobby_code, event)
+        def delayed_lobby_cleanup(lobby_id, lobby_code_str):
+            from .models import LobbyGroup
+
+            try:
+                lobby_instance = LobbyGroup.objects.get(id=lobby_id)
+
+                if lobby_instance.players.count() == 0:
+                    lobby_instance.delete()
+                    print(
+                        f"Lobby {lobby_code_str} stayed empty and was deleted by timer."
+                    )
+            except LobbyGroup.DoesNotExist:
+                pass
+
+        if self.lobby.players.count() == 0:
+            delay_seconds = 30.0
+
+            cleanup_timer = threading.Timer(
+                delay_seconds,
+                delayed_lobby_cleanup,
+                args=[self.lobby.id, self.lobby_code],
+            )
+            cleanup_timer.start()
+        else:
+            event = {"type": self.lobby_update.__name__}
+            async_to_sync(self.channel_layer.group_send)(self.lobby_code, event)
 
     def lobby_update(self, event):
+        self.lobby.refresh_from_db()
         context = {
-            "lobby_code": self.lobby.code,
+            "current_lobby": self.lobby,
             "players": self.lobby.players.all(),
             "user": self.scope["user"],
         }

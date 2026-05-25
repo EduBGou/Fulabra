@@ -17,7 +17,7 @@ def index_view(request: HttpRequest):
 def handle_lobby_view(request: HttpRequest):
     lobby_code = request.POST.get("lobby_code")
 
-    if len(lobby_code) > 8:
+    if len(lobby_code) > 6:
         try:
             return redirect(lobby_code)
         except:
@@ -26,7 +26,14 @@ def handle_lobby_view(request: HttpRequest):
     return redirect("lobby_invite", lobby_code=lobby_code)
 
 
+def create_lobby_view(request: HttpRequest):
+    LobbyGroup.objects.filter(leader=request.user).update(leader=None)
+    new_lobby = LobbyGroup.objects.create(leader=request.user)
+    return redirect("lobby_invite", lobby_code=new_lobby.code)
+
+
 def lobby_invite_view(request: HttpRequest, lobby_code: str = ""):
+    lobby_code = lobby_code.upper()
     try:
         lobby = LobbyGroup.objects.get(code=lobby_code)
         if lobby.players.count() >= 3:
@@ -51,7 +58,7 @@ def lobby_room_view(request: HttpRequest, lobby_code: str):
     try:
         lobby = LobbyGroup.objects.get(code=lobby_code)
         context = {
-            "lobby_code": lobby.code,
+            "current_lobby": lobby,
             "invite": request.build_absolute_uri(
                 reverse("lobby_invite", kwargs={"lobby_code": lobby.code})
             ),

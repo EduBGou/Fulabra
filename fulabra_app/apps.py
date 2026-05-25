@@ -6,10 +6,11 @@ class FulabraappConfig(AppConfig):
     name = "fulabra_app"
 
     def ready(self):
-        from .models import User
+        from .models import User, LobbyGroup
 
         try:
             User.objects.filter(current_lobby__isnull=False).update(current_lobby=None)
+            LobbyGroup.objects.all().delete()
             print("Server started: Cleared all stale lobby assignments.")
         except Exception:
             print("Server started: Failed to clear all stale lobby assignments.")

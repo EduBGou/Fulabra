@@ -1,10 +1,31 @@
+from random import choices
+
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 
 from fulabra import settings
 
+characters = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+length = 6
+
 class LobbyGroup(models.Model):
-    code = models.CharField(max_length=8)
+    code = models.CharField(max_length=length, unique=True, blank=True)
+    leader = models.OneToOneField(
+        "User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="leader_lobby",
+    )
+
+    def save(self, *args, **kwargs):
+        if not self.code:
+            while True:
+                code = "".join(choices(characters, k=length))
+                if not self.__class__.objects.filter(code=code).exists():
+                    self.code = code
+                    break
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.code
@@ -83,19 +104,7 @@ class FriendRequest(models.Model):
     def __str__(self):
         return f"De {self.from_user.username} para {self.to_user.username} ({self.status})"
 
+    friends = models.ManyToManyField("self", symmetrical=True, blank=True)
 
-# class Player(models.Model):
-#     lobby = models.ForeignKey(
-#         LobbyGroup, on_delete=models.CASCADE, related_name="players"
-#     )
-
-#     user = models.ForeignKey(
-#         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True
-#     )
-
-#     session_key = models.CharField(max_length=40, db_index=True)
-
-#     nickname = models.CharField(max_length=50)
-
-#     def __str__(self):
-#         return self.nickname
+    def __str__(self):
+        return f"{self.username}"

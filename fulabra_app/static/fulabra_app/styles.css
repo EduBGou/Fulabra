@@ -1,3 +1,13 @@
-.body{
+.body {
     margin: 2%;
+}
+.invite-container {
+    max-width: 230px;
+    margin: 0px;
+}
+
+.invite-btn {
+    color: blue;
+    background-color: transparent;
+    border: none;
 }
