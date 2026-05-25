@@ -42,10 +42,14 @@ class User(AbstractUser):
     )
 
     nickname = models.CharField(max_length=16, blank=True, null=True)
-    avatar = models.CharField(max_length=100, default='default_avatar.png')
+    avatar = models.ImageField(upload_to='avatars/', default='avatars/default_avatar.png')
     wins = models.IntegerField(default=0)
     stars = models.IntegerField(default=0)
 
+    friends = models.ManyToManyField("self", symmetrical=True, blank=True)
+
+    def __str__(self):
+        return f"{self.username}"
 
 class Match(models.Model):
     player1 = models.ForeignKey(
@@ -104,7 +108,3 @@ class FriendRequest(models.Model):
     def __str__(self):
         return f"De {self.from_user.username} para {self.to_user.username} ({self.status})"
 
-    friends = models.ManyToManyField("self", symmetrical=True, blank=True)
-
-    def __str__(self):
-        return f"{self.username}"

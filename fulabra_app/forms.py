@@ -2,6 +2,8 @@ from django import forms
 from .models import User
 
 class UserProfileForm(forms.ModelForm):
+    selected_preset = forms.CharField(required=False, widget=forms.HiddenInput())
+
     class Meta:
         model = User
         fields = ['nickname', 'avatar']
@@ -10,10 +12,10 @@ class UserProfileForm(forms.ModelForm):
                 'class': 'form-control',
                 'placeholder': 'Escolhe seu novo apelido'
             }),
-            'avatar': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'avatar.png'
-            }), # Futuramente se migrar para um upload de arquivos -> forms.FileInput
+            'avatar': forms.FileInput(attrs={
+                'class': 'd-none',
+                'accept': 'avatars/*'
+            }),
         }
     
     def clean_nickname(self):

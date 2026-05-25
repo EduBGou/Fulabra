@@ -24,25 +24,41 @@
                         </div>
                     {% endif %}
 
-                    <form method="POST">
+                    <form method="POST" enctype="multipart/form-data" id="profileForm">
                         {% csrf_token %}
                         
+                        {{ form.selected_preset }}
+
+                        <div class="text-center mb-4 position-relative">
+                            <div class="avatar-container d-inline-block position-relative">
+                                <img id="current-avatar-preview" 
+                                     src="{% if user.avatar %}{{ user.avatar.url }}{% else %}{% static 'fulabra_app/images/avatars/default_avatar.png' %}{% endif %}" 
+                                     class="rounded-circle border shadow-sm" 
+                                     width="130" height="130" style="object-fit: cover;">
+                                
+                                <button type="button" class="btn btn-light btn-sm rounded-circle position-absolute border shadow-sm" 
+                                        style="bottom: 0; right: 5px; width: 36px; height: 36px;"
+                                        data-toggle="modal" data-target="#avatarModal">
+                                    <i class="fas fa-camera"></i>
+                                </button>
+                            </div>
+                            <div class="mt-2">
+                                <small class="text-muted d-block">Clique na câmera para alterar sua foto</small>
+                            </div>
+                        </div>
+
                         <div class="form-group">
                             <label for="id_nickname"><strong>Nickname:</strong></label>
                             {{ form.nickname }}
                             <small class="text-muted">Como você quer ser chamado nas partidas.</small>
                         </div>
 
-                        <div class="form-group">
-                            <label for="id_avatar"><strong>Nome do Arquivo de Avatar:</strong></label>
-                            {{ form.avatar }}
-                            <small class="text-muted">Digite o nome da imagem salva nos estáticos (ex: default_avatar.png).</small>
-                        </div>
+                        {{ form.avatar }}
 
-                        <hr>
+                        <hr class="my-4">
 
                         <div class="d-flex justify-content-between">
-                            <a href="{% url 'profile' username=user.username %}" class="btn btn-secondary">
+                            <a href="{% url 'profile' username=user.username %}" class="btn btn-secondary px-4">
                                 Cancelar
                             </a>
                             <button type="submit" class="btn btn-success">
@@ -56,8 +72,74 @@
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="avatarModal" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+    <div class="modal-content" style="border-radius: 24px; overflow: hidden;">
+      
+      <div class="modal-header border-0 px-4 pt-4">
+        <h5 class="modal-title font-weight-bold" id="exampleModalLabel">Mudar foto do perfil</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+
+      <div class="modal-body px-4 pb-4">
+        <ul class="nav nav-pills mb-4 justify-content-center" id="avatarTabs" role="tablist">
+          <li class="nav-item w-50 text-center" role="presentation">
+            <a class="nav-link active font-weight-bold" id="presets-tab" data-toggle="pill" href="#presets" role="tab">
+              <i class="fas fa-palette mr-2"></i>Procurar ilustrações
+            </a>
+          </li>
+          <li class="nav-item w-50 text-center" role="presentation">
+            <a class="nav-link font-weight-bold" id="upload-tab" data-toggle="pill" href="#upload" role="tab">
+              <i class="fas fa-laptop mr-2"></i>Do dispositivo
+            </a>
+          </li>
+        </ul>
+
+        <div class="tab-content pt-2">
+          <div class="tab-pane fade show active" id="presets" role="tabpanel">
+            <div class="row g-3 overflow-auto style-scrollbar" style="max-height: 320px;">
+              
+              {# Copiar e colar blocos desses para ter mais presets #}
+              <div class="col-4 col-sm-3 mb-3 text-center">
+                <img src="{% static 'fulabra_app/images/avatars/avatar1.jpg' %}" data-filename="avatar1.jpg" class="preset-option rounded-circle img-thumbnail p-1" style="width: 85px; height: 85px; cursor: pointer; object-fit: cover;">
+              </div>
+              <div class="col-4 col-sm-3 mb-3 text-center">
+                <img src="{% static 'fulabra_app/images/avatars/avatar2.jpg' %}" data-filename="avatar2.jpg" class="preset-option rounded-circle img-thumbnail p-1" style="width: 85px; height: 85px; cursor: pointer; object-fit: cover;">
+              </div>
+              <div class="col-4 col-sm-3 mb-3 text-center">
+                <img src="{% static 'fulabra_app/images/avatars/avatar3.jpg' %}" data-filename="avatar3.jpg" class="preset-option rounded-circle img-thumbnail p-1" style="width: 85px; height: 85px; cursor: pointer; object-fit: cover;">
+              </div>
+              <div class="col-4 col-sm-3 mb-3 text-center">
+                <img src="{% static 'fulabra_app/images/avatars/avatar4.jpg' %}" data-filename="avatar4.jpg" class="preset-option rounded-circle img-thumbnail p-1" style="width: 85px; height: 85px; cursor: pointer; object-fit: cover;">
+              </div>
+
+            </div>
+          </div>
+
+          <div class="tab-pane fade" id="upload" role="tabpanel">
+            <div class="upload-box d-flex flex-column align-items-center justify-content-center p-5 border text-center" 
+                 style="border-style: dashed !important; border-width: 2px !important; border-radius: 16px; background: #f8f9fa;">
+                <i class="fas fa-cloud-upload-alt text-primary mb-3" style="font-size: 48px;"></i>
+                <h6 class="font-weight-bold mb-1">Arraste um arquivo ou clique abaixo</h6>
+                <p class="text-muted small mb-3">Suporta PNG, JPG ou JPEG</p>
+                <button type="button" class="btn btn-primary btn-sm px-4 font-weight-bold" id="triggerFileSelect" style="border-radius: 20px;">
+                    Selecionar Imagem
+                </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block script %}
     <script src="{% static 'fulabra_app/scripts/disableSubmitIfUnchanged.js' %}"></script>
+    <script src="{% static 'fulabra_app/scripts/avatarModal.js' %}"></script>
 {% endblock %}

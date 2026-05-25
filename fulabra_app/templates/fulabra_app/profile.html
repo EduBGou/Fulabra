@@ -8,7 +8,7 @@
         <div class="card-body d-flex align-items-center">
             
             <div class="mr-4">
-                <img src="{% static 'fulabra_app/images/' %}{{ profile_user.avatar }}" 
+                <img src="{{ profile_user.avatar.url }}" 
                      alt="Avatar" 
                      class="rounded-circle img-thumbnail" 
                      style="width: 80px; height: 80px; object-fit: cover; flex-shrink: 0;">

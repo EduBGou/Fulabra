@@ -184,10 +184,16 @@ def edit_profile_view(request: HttpRequest):
     logged_user = request.user
 
     if request.method == 'POST':
-        form = UserProfileForm(request.POST, instance=logged_user)
+        form = UserProfileForm(request.POST, request.FILES, instance=logged_user)
 
         if form.is_valid():
-            form.save()
+            user_instace = form.save(commit=False)
+            preset = form.cleaned_data.get('selected_preset')
+
+            if preset and not request.FILES.get('avatar'):
+                user_instace.avatar = f"avatars/{preset}"
+
+            user_instace.save()
             return redirect('profile', username=logged_user.username)
     else:
         form = UserProfileForm(instance=logged_user)

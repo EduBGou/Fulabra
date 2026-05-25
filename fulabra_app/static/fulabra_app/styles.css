@@ -11,3 +11,31 @@
     background-color: transparent;
     border: none;
 }
+
+/* Preset de foto de perfil */
+.preset-option {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.preset-option:hover {
+    transform: scale(1.08);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+}
+
+#avatarTabs .nav-link {
+    border-radius: 30px;
+    color: #5f6368;
+    background-color: #f1f3f4;
+    margin: 0 5px;
+}
+#avatarTabs .nav-link.active {
+    background-color: #1a73e8 !important;
+    color: #fff;
+}
+
+.upload-box {
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+.upload-box:hover {
+    border-color: #1a73e8 !important;
+    background-color: #f4f8fe !important;
+}
