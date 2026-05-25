@@ -191,11 +191,14 @@ def edit_profile_view(request: HttpRequest):
             preset = form.cleaned_data.get('selected_preset')
 
             if preset and not request.FILES.get('avatar'):
-                user_instace.avatar = f"avatars/{preset}"
+                if preset == "default_avatar.png":
+                    user_instace.avatar = "avatars/default_avatar.png"
+                else:
+                    user_instace.avatar = f"avatars/{preset}"
 
             user_instace.save()
             return redirect('profile', username=logged_user.username)
     else:
-        form = UserProfileForm(instance=logged_user)
-    
+        form = UserProfileForm(instance=logged_user)   
+        
     return render(request, "fulabra_app/edit_profile.html", {"form": form})

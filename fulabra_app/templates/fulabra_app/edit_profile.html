@@ -29,22 +29,50 @@
                         
                         {{ form.selected_preset }}
 
-                        <div class="text-center mb-4 position-relative">
-                            <div class="avatar-container d-inline-block position-relative">
-                                <img id="current-avatar-preview" 
-                                     src="{% if user.avatar %}{{ user.avatar.url }}{% else %}{% static 'fulabra_app/images/avatars/default_avatar.png' %}{% endif %}" 
-                                     class="rounded-circle border shadow-sm" 
-                                     width="130" height="130" style="object-fit: cover;">
-                                
-                                <button type="button" class="btn btn-light btn-sm rounded-circle position-absolute border shadow-sm" 
-                                        style="bottom: 0; right: 5px; width: 36px; height: 36px;"
-                                        data-toggle="modal" data-target="#avatarModal">
-                                    <i class="fas fa-camera"></i>
-                                </button>
-                            </div>
-                            <div class="mt-2">
-                                <small class="text-muted d-block">Clique na câmera para alterar sua foto</small>
-                            </div>
+                        <div class="text-center mb-4">
+                          <div class="position-relative d-inline-block" style="width: 140px; height: 140px;">
+                              <img id="current-avatar-preview" 
+                                  src="{% if user.avatar %}{{ user.avatar.url }}{% else %}{% static 'fulabra_app/images/avatars/default_avatar.png' %}{% endif %}" 
+                                  class="rounded-circle img-thumbnail" 
+                                  style="width: 140px; height: 140px; object-fit: cover;">
+                              
+                              <div class="dropdown position-absolute" style="bottom: 0; right: 0; z-index: 10;">
+                                  <button type="button" 
+                                          class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center" 
+                                          id="dropdownMenuAvatar"
+                                          data-toggle="dropdown" 
+                                          aria-haspopup="true" 
+                                          aria-expanded="false"
+                                          style="padding: 2px 4px; background-color: #f6f8fa; border-color: rgba(27,31,35,0.15); color: #24292e; box-shadow: 0 1px 0 rgba(27,31,35,0.04);">
+                                      <svg class="mr-1" viewBox="0 0 16 16" version="1.1" width="14" height="14" aria-hidden="true" fill="currentColor" style="color: #57606a;">
+                                          <path fill-rule="evenodd" d="M11.013 1.427a1.75 1.75 0 012.474 0l1.086 1.086a1.75 1.75 0 010 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 01-.922-.922l.929-3.251a1.75 1.75 0 01.445-.758l8.61-8.61zm1.414 1.06a.25 0 00-.354 0L10.811 3.75l1.439 1.44 1.263-1.263a.25 0 000-.354l-1.086-1.086zM11.189 6.25L9.75 4.81 3.507 11.054a.25 0 00-.063.108l-.517 1.808 1.808-.517a.25 0 00.108-.063L11.189 6.25z"></path>
+                                      </svg>
+                                      Editar
+                                  </button>
+                                  
+                                  <div class="dropdown-menu dropdown-menu-right mt-1 shadow-sm py-1" 
+                                      aria-labelledby="dropdownMenuAvatar" 
+                                      style="border-radius: 6px; border: 1px solid #d0d7de; min-width: 150px; font-size: 13px; background-color: #ffffff;">
+                                      
+                                      <button type="button" 
+                                              class="dropdown-item py-2 text-dark font-weight-normal" 
+                                              data-toggle="modal" 
+                                              data-target="#avatarModal"
+                                              style="background: none; border: none; text-align: left;">
+                                          Alterar foto
+                                      </button>
+                                      
+                                      <div class="dropdown-divider my-0" style="border-top: 1px solid #d0d7de;"></div>
+                                      
+                                      <button type="button" 
+                                              id="btn-remove-avatar" 
+                                              class="dropdown-item py-2 text-dark font-weight-normal"
+                                              style="background: none; border: none; text-align: left;">
+                                          Remover foto
+                                      </button>
+                                  </div>
+                              </div>
+                          </div>
                         </div>
 
                         <div class="form-group">
@@ -75,7 +103,7 @@
 
 <div class="modal fade" id="avatarModal" tabindex="-1" role="dialog" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
-    <div class="modal-content" style="border-radius: 24px; overflow: hidden;">
+    <div class="modal-content" style="overflow: hidden;">
       
       <div class="modal-header border-0 px-4 pt-4">
         <h5 class="modal-title font-weight-bold" id="exampleModalLabel">Mudar foto do perfil</h5>
@@ -88,7 +116,7 @@
         <ul class="nav nav-pills mb-4 justify-content-center" id="avatarTabs" role="tablist">
           <li class="nav-item w-50 text-center" role="presentation">
             <a class="nav-link active font-weight-bold" id="presets-tab" data-toggle="pill" href="#presets" role="tab">
-              <i class="fas fa-palette mr-2"></i>Procurar ilustrações
+              <i class="fas fa-palette mr-2"></i>Presets
             </a>
           </li>
           <li class="nav-item w-50 text-center" role="presentation">

@@ -1,28 +1,36 @@
 document.addEventListener('DOMContentLoaded', function() {
-    const form = document.querySelector('form');
+    const form = document.querySelector('#profileForm');
     if (!form) return; 
 
     const submitBtn = form.querySelector('button[type="submit"]');
     if (!submitBtn) return;
-    
-    const initialData = new FormData(form);
-    const initialState = Array.from(initialData.entries()).toString();
 
-    function setButtonState(isDisabled) {
-        submitBtn.disabled = isDisabled;
-        if (isDisabled) {
-            submitBtn.style.cursor = 'default';
-        } else {
+    const nicknameInput = form.querySelector('[name="nickname"]');
+    const initialNickname = nicknameInput ? nicknameInput.value : "";
+
+    let avatarWasChanged = false;
+
+    function checkChanges() {
+        const currentNickname = nicknameInput ? nicknameInput.value : "";
+        const nicknameChanged = (currentNickname !== initialNickname);
+
+        if (nicknameChanged || avatarWasChanged) {
+            submitBtn.disabled = false;
             submitBtn.style.cursor = '';
+        } else {
+            submitBtn.disabled = true;
+            submitBtn.style.cursor = 'default';
         }
     }
 
-    setButtonState(true);
+    checkChanges();
 
-    form.addEventListener('input', () => {
-        const currentData = new FormData(form);
-        const currentState = Array.from(currentData.entries()).toString();
-        const noneChanged = (initialState === currentState);
-        setButtonState(noneChanged);
+    if (nicknameInput) {
+        nicknameInput.addEventListener('input', checkChanges);
+    }
+
+    form.addEventListener('avatarChanged', function() {
+        avatarWasChanged = true;
+        checkChanges();
     });
 });

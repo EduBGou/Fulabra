@@ -14,7 +14,7 @@ class UserProfileForm(forms.ModelForm):
             }),
             'avatar': forms.FileInput(attrs={
                 'class': 'd-none',
-                'accept': 'avatars/*'
+                'accept': 'image/png, image/jpeg, image/jpg'
             }),
         }
     
