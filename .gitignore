@@ -1,0 +1,6 @@
+.venv
+fulabra/__pycache__/
+fulabra_app/__pycache__/
+fulabra_app/migrations/
+fulabra_app/migrations/__pycache__/
+db.sqlite3
