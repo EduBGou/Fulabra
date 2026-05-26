@@ -1,58 +1,25 @@
+from ast import List
 from random import choices
 
 from django.db import models
+from django.db.models import QuerySet
 from django.contrib.auth.models import AbstractUser
+from django.utils.translation import gettext_lazy as _
 
 from fulabra import settings
 
 characters = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 length = 6
 
+CHARACTERS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+LOBBY_CODE_LENGTH = 6
 
-class LobbyGroup(models.Model):
-    LOBBY_STATUS_CHOICES = [
-        ("waiting", "Waiting for Players"),
-        ("starting", "Starting Countdown"),
-        ("playing", "In Game"),
-        ("finished", "Game Over"),
-    ]
 
-    code = models.CharField(max_length=length, unique=True, blank=True)
-    leader = models.OneToOneField(
-        "User",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="leader_lobby",
-    )
-
-    status = models.CharField(
-        max_length=20, choices=LOBBY_STATUS_CHOICES, default="waiting"
-    )
-
-    def save(self, *args, **kwargs):
-        if not self.code:
-            while True:
-                code = "".join(choices(characters, k=length))
-                if not self.__class__.objects.filter(code=code).exists():
-                    self.code = code
-                    break
-        super().save(*args, **kwargs)
-
-    def __str__(self):
-        return self.code
+LOBBYPLAYER_LOBBY_RELATED_NAME = "memberships"
 
 
 class User(AbstractUser):
     email = models.EmailField(("email address"), blank=True, unique=True)
-    current_lobby = models.ForeignKey(
-        LobbyGroup,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="players",
-    )
-
     nickname = models.CharField(max_length=16, blank=True, null=True)
     avatar = models.ImageField(
         upload_to="avatars/", default="avatars/default_avatar.png"
@@ -62,8 +29,81 @@ class User(AbstractUser):
 
     friends = models.ManyToManyField("self", symmetrical=True, blank=True)
 
+    @property
+    def leader_lobby(self):
+        return getattr(self, User.leader_lobby.__name__).all()
+
+    @property
+    def membership(self):
+        return getattr(self, User.membership.__name__).all()
+
     def __str__(self):
         return f"{self.username}"
+
+
+class LobbyGroup(models.Model):
+
+    class LobbyStatus(models.TextChoices):
+        WAITING = "waiting", _("Waiting for Players")
+        STARTING = "starting", _("Starting Countdown")
+        PLAYING = "playing", _("In Game")
+        FINISHED = "finished", _("Game Over")
+
+    code = models.CharField(
+        max_length=LOBBY_CODE_LENGTH,
+        unique=True,
+        editable=False,
+        db_index=True,
+    )
+
+    leader = models.OneToOneField(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name=User.leader_lobby.__name__,
+    )
+
+    status = models.CharField(
+        max_length=20, choices=LobbyStatus.choices, default=LobbyStatus.WAITING
+    )
+
+    @property
+    def memberships(self) -> QuerySet:
+        return getattr(self, LobbyGroup.memberships.__name__).all()
+
+    def generate_unique_code(self) -> str:
+        """Helper method to generate a unique lobby code"""
+        while True:
+            new_code = "".join(choices(CHARACTERS, k=LOBBY_CODE_LENGTH))
+            if not LobbyGroup.objects.filter(code=new_code).exists():
+                return new_code
+
+    def save(self, *args, **kwargs):
+        if not self.code:
+            self.code = self.generate_unique_code()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Lobby {self.code} ({self.status()})"
+
+
+class LobbyPlayer(models.Model):
+    lobby = models.ForeignKey(
+        LobbyGroup,
+        on_delete=models.CASCADE,
+        related_name=LobbyGroup.memberships.__name__,
+    )
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name=User.membership.__name__,
+    )
+
+    joined_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user} is in {self.lobby}"
 
 
 class Match(models.Model):

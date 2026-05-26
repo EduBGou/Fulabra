@@ -2,30 +2,32 @@
 {% load static %}
 
 {% block body %}
-  <h2>Lobby #{{ current_lobby.code }}</h2>
   {% include 'fulabra_app/partials/error_message.html' %}
-  {% if not error_message %}
+  {% if not context.error_message %}
     <div id="error-message"></div>
-    <div id="lobby-container" hx-ext="ws" ws-connect="/ws/lobby/{{ current_lobby.code }}/">
-      <div id="lobby-controls"></div>
-    </div>
-
-    {% if current_lobby.leader == user %}
-      <div class="container invite-container">
-        {% for f in user.friends.all %}
-          <div class="row align-items-center mb-2 pb-2">
-            <div class="col text-truncate">{{ f.username }}</div>
-            <div class="col-auto">
-              <button type="button" class="invite-btn">Invite</button>
-            </div>
-          </div>
-        {% endfor %}
+    <div id="lobby-container" hx-ext="ws" ws-connect="/ws/lobby/{{ context.current_lobby.code }}/">
+      <div id="game-container">
+        <h2>Lobby #{{ context.current_lobby.code }}</h2>
       </div>
-      <button id="btn-invite" class="btn btn-primary" data-invite-link="{{ invite }}">Copy Invite Link</button>
-    {% endif %}
-
+      <div id="lobby-controls">
+        <div id="player-list"></div>
+        {% if context.current_lobby.leader == user %}
+          <div class="container invite-container">
+            {% for f in context.user.friends.all %}
+              <div class="row align-items-center mb-2 pb-2">
+                <div class="col text-truncate">{{ f.username }}</div>
+                <div class="col-auto">
+                  <button type="button" class="invite-btn">Invite</button>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+          <button id="btn-invite" class="btn btn-primary" data-invite-link="{{ context.invite }}">Copy Invite Link</button>
+        {% endif %}
+        <a href="{% url 'index' %}"><button class="btn btn-danger">Quit</button></a>
+      </div>
+    </div>
   {% endif %}
-  <a href="{% url 'index' %}"><button class="btn btn-danger">Quit</button></a>
 
   <script>
     const inviteBtn = document.querySelector('#btn-invite')
