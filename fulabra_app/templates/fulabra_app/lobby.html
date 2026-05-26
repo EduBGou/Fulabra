@@ -3,26 +3,27 @@
 
 {% block body %}
   <h2>Lobby #{{ current_lobby.code }}</h2>
-  <div id="error-message"></div>
+  {% include 'fulabra_app/partials/error_message.html' %}
   {% if not error_message %}
+    <div id="error-message"></div>
     <div id="lobby-container" hx-ext="ws" ws-connect="/ws/lobby/{{ current_lobby.code }}/">
-      <div id="player-list"></div>
+      <div id="lobby-controls"></div>
     </div>
 
     {% if current_lobby.leader == user %}
-      <p>Invite a friend</p>
       <div class="container invite-container">
         {% for f in user.friends.all %}
           <div class="row align-items-center mb-2 pb-2">
-            <div class="col text-truncate">{{ f.username }} </div>
+            <div class="col text-truncate">{{ f.username }}</div>
             <div class="col-auto">
               <button type="button" class="invite-btn">Invite</button>
             </div>
           </div>
         {% endfor %}
       </div>
+      <button id="btn-invite" class="btn btn-primary" data-invite-link="{{ invite }}">Copy Invite Link</button>
     {% endif %}
-    <button id="btn-invite" class="btn btn-primary" data-invite-link="{{ invite }}">Copy Invite Link</button>
+
   {% endif %}
   <a href="{% url 'index' %}"><button class="btn btn-danger">Quit</button></a>
 

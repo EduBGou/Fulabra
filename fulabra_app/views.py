@@ -65,7 +65,7 @@ def lobby_room_view(request: HttpRequest, lobby_code: str):
         }
     except:
         context = {
-            "error_message": "This invite isn't valid.",
+            "error_message": "This lobby no longer exists.",
         }
 
     return render(request, "fulabra_app/lobby.html", context)
@@ -94,7 +94,7 @@ def logout_view(request: HttpRequest):
     return redirect("index")
 
 
-def register(request: HttpRequest):
+def register_view(request: HttpRequest):
     if request.method == "POST":
         username = request.POST["username"]
         email = request.POST["email"]
@@ -135,7 +135,7 @@ def register(request: HttpRequest):
 
         login(request, user)
 
-        hx_redirect("index")
+        return hx_redirect("index")
 
     else:
         return render(request, "fulabra_app/register.html")
