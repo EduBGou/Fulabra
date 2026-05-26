@@ -1,24 +1,6 @@
-# Python
-__pycache__/
-*.py[cod]
-
-# Virtual Environment and Variables
-venv/
-.venv/
-env/
-.env
-
-# Django
-db.sqlite3
-*.sqlite3
-
-# Django migrations cache
-*/migrations/__pycache__/
-
-# Specific project folders
+.venv
 fulabra/__pycache__/
 fulabra_app/__pycache__/
-
-# IDEs / Editors
-.vscode/
-.idea/
+fulabra_app/migrations/
+fulabra_app/migrations/__pycache__/
+db.sqlite3
