@@ -1,10 +1,12 @@
 from django.db import IntegrityError
+from django.db.models import Q
 
-from django.shortcuts import redirect, render
+from django.shortcuts import redirect, render, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.http import HttpRequest, HttpResponse
 from django.urls import reverse
 
+from .forms import UserProfileForm
 from .models import *
 
 
@@ -139,3 +141,64 @@ def register(request: HttpRequest):
 
     else:
         return render(request, "fulabra_app/register.html")
+
+
+# Perfil do Usuário
+def profile_view(request: HttpRequest, username: str):
+    profile_user = get_object_or_404(User, username=username)
+    logged_user = request.user
+    is_owner = (logged_user==profile_user)
+
+    recent_matches = Match.objects.filter(
+        Q(player1=profile_user)|
+        Q(player2=profile_user)|
+        Q(player3=profile_user)
+    ).order_by('-date_played')[:10]
+
+    friend_status = None
+
+    if not is_owner and logged_user.is_authenticated:
+        friend_request = FriendRequest.objects.filter(
+            Q(from_user=logged_user, to_user=profile_user)|
+            Q(from_user=profile_user, to_user=logged_user)
+        ).first()
+
+        if friend_request:
+            friend_status = friend_request.status
+        
+    context = {
+        "profile_user": profile_user,
+        "is_owner": is_owner,
+        "recent_matches": recent_matches,
+        "friend_status": friend_status
+    }
+
+    return render(request, "fulabra_app/profile.html", context)
+
+
+# Edição de perfil
+def edit_profile_view(request: HttpRequest):
+    if not request.user.is_authenticated:
+        return redirect('login')
+    
+    logged_user = request.user
+
+    if request.method == 'POST':
+        form = UserProfileForm(request.POST, request.FILES, instance=logged_user)
+
+        if form.is_valid():
+            user_instace = form.save(commit=False)
+            preset = form.cleaned_data.get('selected_preset')
+
+            if preset and not request.FILES.get('avatar'):
+                if preset == "default_avatar.png":
+                    user_instace.avatar = "avatars/default_avatar.png"
+                else:
+                    user_instace.avatar = f"avatars/{preset}"
+
+            user_instace.save()
+            return redirect('profile', username=logged_user.username)
+    else:
+        form = UserProfileForm(instance=logged_user)   
+        
+    return render(request, "fulabra_app/edit_profile.html", {"form": form})

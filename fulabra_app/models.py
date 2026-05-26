@@ -3,6 +3,7 @@ from random import choices
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 
+from fulabra import settings
 
 characters = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 length = 6
@@ -40,7 +41,70 @@ class User(AbstractUser):
         related_name="players",
     )
 
+    nickname = models.CharField(max_length=16, blank=True, null=True)
+    avatar = models.ImageField(upload_to='avatars/', default='avatars/default_avatar.png')
+    wins = models.IntegerField(default=0)
+    stars = models.IntegerField(default=0)
+
     friends = models.ManyToManyField("self", symmetrical=True, blank=True)
 
     def __str__(self):
         return f"{self.username}"
+
+class Match(models.Model):
+    player1 = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.CASCADE, 
+        related_name='matches_as_p1'
+    )
+    
+    player2 = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.CASCADE, 
+        related_name='matches_as_p2'
+    )
+
+    player3 = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.CASCADE, 
+        related_name='matches_as_p3'
+    )
+
+    winner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='matches_won'
+    )
+
+    date_played = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"Partida {self.id} - Vencedor: {self.winner.username if self.winner else 'Empate'}"
+
+
+class FriendRequest(models.Model):
+    STATUS_CHOICES = (
+        ('pending', 'Pendente'),
+        ('accepted', 'Aceito'),
+        ('rejected', 'Recusado'),
+    )
+
+    from_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='sent_friend_requests'
+    )
+
+    to_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='received_friend_requests'
+    )
+
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"De {self.from_user.username} para {self.to_user.username} ({self.status})"
+

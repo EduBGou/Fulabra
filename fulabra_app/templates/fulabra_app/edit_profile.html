@@ -1,0 +1,173 @@
+{% extends 'fulabra_app/layout.html' %}
+{% load static %}
+
+{% block body %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h4 class="mb-0">Editar Seu Perfil</h4>
+                </div>
+                <div class="card-body">
+
+                    {% if form.errors %}
+                        <div class="alert alert-danger">
+                            <strong>Erro:</strong>
+                            <ul class="mb-0 mt-1">
+                                {% for field, errors in form.errors.items %}
+                                    {% for error in errors %}
+                                        <li>{{ error }}</li>
+                                    {% endfor %}
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    {% endif %}
+
+                    <form method="POST" enctype="multipart/form-data" id="profileForm">
+                        {% csrf_token %}
+                        
+                        {{ form.selected_preset }}
+
+                        <div class="text-center mb-4">
+                          <div class="position-relative d-inline-block" style="width: 140px; height: 140px;">
+                              <img id="current-avatar-preview" 
+                                  src="{% if user.avatar %}{{ user.avatar.url }}{% else %}{% static 'fulabra_app/images/avatars/default_avatar.png' %}{% endif %}" 
+                                  class="rounded-circle img-thumbnail" 
+                                  style="width: 140px; height: 140px; object-fit: cover;">
+                              
+                              <div class="dropdown position-absolute" style="bottom: 0; right: 0; z-index: 10;">
+                                  <button type="button" 
+                                          class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center" 
+                                          id="dropdownMenuAvatar"
+                                          data-toggle="dropdown" 
+                                          aria-haspopup="true" 
+                                          aria-expanded="false"
+                                          style="padding: 2px 4px; background-color: #f6f8fa; border-color: rgba(27,31,35,0.15); color: #24292e; box-shadow: 0 1px 0 rgba(27,31,35,0.04);">
+                                      <svg class="mr-1" viewBox="0 0 16 16" version="1.1" width="14" height="14" aria-hidden="true" fill="currentColor" style="color: #57606a;">
+                                          <path fill-rule="evenodd" d="M11.013 1.427a1.75 1.75 0 012.474 0l1.086 1.086a1.75 1.75 0 010 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 01-.922-.922l.929-3.251a1.75 1.75 0 01.445-.758l8.61-8.61zm1.414 1.06a.25 0 00-.354 0L10.811 3.75l1.439 1.44 1.263-1.263a.25 0 000-.354l-1.086-1.086zM11.189 6.25L9.75 4.81 3.507 11.054a.25 0 00-.063.108l-.517 1.808 1.808-.517a.25 0 00.108-.063L11.189 6.25z"></path>
+                                      </svg>
+                                      Editar
+                                  </button>
+                                  
+                                  <div class="dropdown-menu dropdown-menu-right mt-1 shadow-sm py-1" 
+                                      aria-labelledby="dropdownMenuAvatar" 
+                                      style="border-radius: 6px; border: 1px solid #d0d7de; min-width: 150px; font-size: 13px; background-color: #ffffff;">
+                                      
+                                      <button type="button" 
+                                              class="dropdown-item py-2 text-dark font-weight-normal" 
+                                              data-toggle="modal" 
+                                              data-target="#avatarModal"
+                                              style="background: none; border: none; text-align: left;">
+                                          Alterar foto
+                                      </button>
+                                      
+                                      <div class="dropdown-divider my-0" style="border-top: 1px solid #d0d7de;"></div>
+                                      
+                                      <button type="button" 
+                                              id="btn-remove-avatar" 
+                                              class="dropdown-item py-2 text-dark font-weight-normal"
+                                              style="background: none; border: none; text-align: left;">
+                                          Remover foto
+                                      </button>
+                                  </div>
+                              </div>
+                          </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="id_nickname"><strong>Nickname:</strong></label>
+                            {{ form.nickname }}
+                            <small class="text-muted">Como você quer ser chamado nas partidas.</small>
+                        </div>
+
+                        {{ form.avatar }}
+
+                        <hr class="my-4">
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'profile' username=user.username %}" class="btn btn-secondary px-4">
+                                Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-success">
+                                Salvar Alterações
+                            </button>
+                        </div>
+                    </form>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="avatarModal" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+    <div class="modal-content" style="overflow: hidden;">
+      
+      <div class="modal-header border-0 px-4 pt-4">
+        <h5 class="modal-title font-weight-bold" id="exampleModalLabel">Mudar foto do perfil</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+
+      <div class="modal-body px-4 pb-4">
+        <ul class="nav nav-pills mb-4 justify-content-center" id="avatarTabs" role="tablist">
+          <li class="nav-item w-50 text-center" role="presentation">
+            <a class="nav-link active font-weight-bold" id="presets-tab" data-toggle="pill" href="#presets" role="tab">
+              <i class="fas fa-palette mr-2"></i>Presets
+            </a>
+          </li>
+          <li class="nav-item w-50 text-center" role="presentation">
+            <a class="nav-link font-weight-bold" id="upload-tab" data-toggle="pill" href="#upload" role="tab">
+              <i class="fas fa-laptop mr-2"></i>Do dispositivo
+            </a>
+          </li>
+        </ul>
+
+        <div class="tab-content pt-2">
+          <div class="tab-pane fade show active" id="presets" role="tabpanel">
+            <div class="row g-3 overflow-auto style-scrollbar" style="max-height: 320px;">
+              
+              {# Copiar e colar blocos desses para ter mais presets #}
+              <div class="col-4 col-sm-3 mb-3 text-center">
+                <img src="{% static 'fulabra_app/images/avatars/avatar1.jpg' %}" data-filename="avatar1.jpg" class="preset-option rounded-circle img-thumbnail p-1" style="width: 85px; height: 85px; cursor: pointer; object-fit: cover;">
+              </div>
+              <div class="col-4 col-sm-3 mb-3 text-center">
+                <img src="{% static 'fulabra_app/images/avatars/avatar2.jpg' %}" data-filename="avatar2.jpg" class="preset-option rounded-circle img-thumbnail p-1" style="width: 85px; height: 85px; cursor: pointer; object-fit: cover;">
+              </div>
+              <div class="col-4 col-sm-3 mb-3 text-center">
+                <img src="{% static 'fulabra_app/images/avatars/avatar3.jpg' %}" data-filename="avatar3.jpg" class="preset-option rounded-circle img-thumbnail p-1" style="width: 85px; height: 85px; cursor: pointer; object-fit: cover;">
+              </div>
+              <div class="col-4 col-sm-3 mb-3 text-center">
+                <img src="{% static 'fulabra_app/images/avatars/avatar4.jpg' %}" data-filename="avatar4.jpg" class="preset-option rounded-circle img-thumbnail p-1" style="width: 85px; height: 85px; cursor: pointer; object-fit: cover;">
+              </div>
+
+            </div>
+          </div>
+
+          <div class="tab-pane fade" id="upload" role="tabpanel">
+            <div class="upload-box d-flex flex-column align-items-center justify-content-center p-5 border text-center" 
+                 style="border-style: dashed !important; border-width: 2px !important; border-radius: 16px; background: #f8f9fa;">
+                <i class="fas fa-cloud-upload-alt text-primary mb-3" style="font-size: 48px;"></i>
+                <h6 class="font-weight-bold mb-1">Arraste um arquivo ou clique abaixo</h6>
+                <p class="text-muted small mb-3">Suporta PNG, JPG ou JPEG</p>
+                <button type="button" class="btn btn-primary btn-sm px-4 font-weight-bold" id="triggerFileSelect" style="border-radius: 20px;">
+                    Selecionar Imagem
+                </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block script %}
+    <script src="{% static 'fulabra_app/scripts/disableSubmitIfUnchanged.js' %}"></script>
+    <script src="{% static 'fulabra_app/scripts/avatarModal.js' %}"></script>
+{% endblock %}
