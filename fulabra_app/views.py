@@ -79,11 +79,11 @@ def login_view(request: HttpRequest):
 
         if user is not None:
             login(request, user)
-            return redirect("index")
+            return hx_redirect("index")
         else:
             return render(
                 request,
-                "fulabra_app/login.html",
+                "fulabra_app/partials/error_message.html",
                 {"error_message": "Invalid username and/or password."},
             )
     return render(request, "fulabra_app/login.html")
@@ -135,9 +135,7 @@ def register(request: HttpRequest):
 
         login(request, user)
 
-        response = HttpResponse()
-        response["HX-Redirect"] = reverse("index")
-        return response
+        hx_redirect("index")
 
     else:
         return render(request, "fulabra_app/register.html")
@@ -180,7 +178,7 @@ def profile_view(request: HttpRequest, username: str):
 def edit_profile_view(request: HttpRequest):
     if not request.user.is_authenticated:
         return redirect('login')
-    
+
     logged_user = request.user
 
     if request.method == 'POST':
@@ -200,5 +198,11 @@ def edit_profile_view(request: HttpRequest):
             return redirect('profile', username=logged_user.username)
     else:
         form = UserProfileForm(instance=logged_user)   
-        
+
     return render(request, "fulabra_app/edit_profile.html", {"form": form})
+
+
+def hx_redirect(viewname: str):
+    response = HttpResponse()
+    response["HX-Redirect"] = reverse(viewname)
+    return response
