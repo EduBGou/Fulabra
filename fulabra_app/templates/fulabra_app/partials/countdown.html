@@ -1,0 +1,22 @@
+<div id="player-list" hx-swap-oob="innerHTML" class="text-center py-5 animate__animated animate__zoomIn">
+  <div class="display-1 fw-extrabold text-warning countdown-number mb-3">
+    {{ context.seconds_left }}
+  </div>
+  <h3 class="fw-bold tracking-wider text-uppercase text-muted">The match is starting...</h3>
+  <p class="small text-secondary">Get your equipment ready.</p>
+
+
+  <div id="cancel-button-div"></div>
+
+  <style>
+    .countdown-number {
+      font-size: 5rem;
+      animation: pulse-grow 1s infinite;
+    }
+    @keyframes pulse-grow {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+      100% { transform: scale(1); }
+    }
+  </style>
+</div>

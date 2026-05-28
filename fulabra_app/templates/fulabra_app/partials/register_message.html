@@ -1,4 +1,4 @@
 {% include 'fulabra_app/partials/error_message.html' %}
-{% include 'fulabra_app/partials/input_field.html' with field_name='username' value=username_val %}
-{% include 'fulabra_app/partials/input_field.html' with field_name='email' type='email' value=email_val %}
-{% include 'fulabra_app/partials/input_field.html' with field_name='confirmation' type='password' value=confirm_value %}
+{% include 'fulabra_app/partials/input_field.html' with field_name='username' value=context.username_val %}
+{% include 'fulabra_app/partials/input_field.html' with field_name='email' type='email' value=context.email_val %}
+{% include 'fulabra_app/partials/input_field.html' with field_name='confirmation' type='password' value=context.confirm_val %}

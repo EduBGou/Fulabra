@@ -4,11 +4,8 @@
 
     <h2>Login</h2>
 
-    {% if message %}
-        <div>{{ message }}</div>
-    {% endif %}
-
-    <form action="{% url 'login' %}" method="post">
+    <div id="error-message"></div>
+    <form hx-post="{% url 'login' %}" hx-swap="none">
         {% csrf_token %}
         <div class="form-group">
             <input autofocus class="form-control" type="text" name="username" placeholder="Username">
