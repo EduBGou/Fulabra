@@ -41,18 +41,3 @@ class PlayerListContext:
     @property
     def lobby_is_full(self) -> bool:
         return self.players_count == 3
-
-
-# @dataclass
-# class CountdownContext:
-#     lobby_player_membership: LobbyPlayer
-#     seconds_left: int
-#     error_message: str = None
-
-#     @property
-#     def lobby_leader(self) -> User:
-#         return self.lobby_player_membership.lobby.leader
-
-#     @property
-#     def user_is_leader(self) -> bool:
-#         return self.lobby_leader == self.lobby_player_membership.user

@@ -30,11 +30,11 @@ class User(AbstractUser):
     friends = models.ManyToManyField("self", symmetrical=True, blank=True)
 
     @property
-    def leader_lobby(self):
+    def leader_lobby(self) -> QuerySet[LobbyGroup]:
         return getattr(self, User.leader_lobby.__name__).all()
 
     @property
-    def membership(self):
+    def membership(self) -> QuerySet[LobbyPlayer]:
         return getattr(self, User.membership.__name__).all()
 
     def __str__(self):

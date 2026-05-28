@@ -14,7 +14,7 @@ class LobbyConsumer(WebsocketConsumer):
         self.user: User = self.scope["user"]
         self.lobby_code: str = self.scope["url_route"]["kwargs"]["lobby_code"]
         self.lobby = LobbyGroup.objects.filter(code=self.lobby_code).first()
-        self.lobby_player_membership = None
+        self.lobby_player_membership: LobbyPlayer = None
 
         if not self.user.is_authenticated or not self.lobby:
             self.accept()
@@ -39,6 +39,7 @@ class LobbyConsumer(WebsocketConsumer):
                 self.close()
                 return
 
+            LobbyPlayer.objects.filter(user=self.user).delete()
             self.lobby_player_membership = LobbyPlayer.objects.create(
                 lobby=self.lobby, user=self.user
             )
@@ -93,13 +94,18 @@ class LobbyConsumer(WebsocketConsumer):
         LobbyPlayer.objects.filter(id=membership_id).delete()
 
         fresh_lobby = LobbyGroup.objects.filter(code=lobby_code).first()
-        if fresh_lobby:
-            fresh_lobby.refresh_from_db()
-            if fresh_lobby.memberships.count() == 0:
-                fresh_lobby.delete()
-                print(f"Lobby {lobby_code} stayed empty and was deleted.")
-            else:
-                self.broadcast_player_list()
+        if not fresh_lobby:
+            return
+
+        if fresh_lobby.memberships.count() == 0:
+            fresh_lobby.delete()
+            print(f"Lobby {lobby_code} stayed empty and was deleted.")
+        else:            
+            fresh_lobby.leader = (
+                LobbyPlayer.objects.filter(lobby=fresh_lobby).first().user
+            )
+            fresh_lobby.save()
+            self.broadcast_player_list()
 
     def run_countdown(self):
         import time

@@ -39,7 +39,13 @@ def lobby_invite_view(request: HttpRequest, lobby_code: str = ""):
     lobby_code = lobby_code.upper()
     try:
         lobby = LobbyGroup.objects.get(code=lobby_code)
-        if lobby.memberships.count() >= 3:
+        if not request.user.is_authenticated:
+            context = {
+                "error_message": f'You must to be logged in to enter in the lobby "{lobby_code}".'
+            }
+            return render(request, "fulabra_app/index.html", {"context": context})
+        is_player_in_lobby = lobby.memberships.filter(user=request.user).exists()
+        if lobby.memberships.count() >= 3 and not is_player_in_lobby:
             context = {"error_message": f'The lobby with code "{lobby_code}" is full.'}
             return render(
                 request, "fulabra_app/partials/error_message.html", {"context": context}
