@@ -2,7 +2,7 @@ import threading
 from channels.generic.websocket import WebsocketConsumer
 from django.template.loader import render_to_string
 from asgiref.sync import async_to_sync
-from .contexts import PlayerListContext
+from .contexts import *
 
 from .models import *
 
@@ -40,7 +40,7 @@ class LobbyConsumer(WebsocketConsumer):
         self.accept()
         async_to_sync(self.channel_layer.group_add)(self.lobby_code, self.channel_name)
 
-        self.broadcast_player_list_update()
+        self.broadcast_player_list()
 
     def disconnect(self, code):
         async_to_sync(self.channel_layer.group_discard)(
@@ -60,7 +60,7 @@ class LobbyConsumer(WebsocketConsumer):
             )
             cleanup_timer.start()
         else:
-            self.broadcast_player_list_update()
+            self.broadcast_player_list()
 
     def receive(self, text_data=None, bytes_data=None):
         import json
@@ -72,20 +72,44 @@ class LobbyConsumer(WebsocketConsumer):
                 self.lobby.status = LobbyGroup.LobbyStatus.STARTING
                 self.lobby.save()
             threading.Thread(target=self.run_countdown, daemon=True).start()
+        elif data.get("action") == "cancel_match":
+            self.lobby.refresh_from_db()
+            if (
+                self.lobby.leader == self.user
+                and self.lobby.status == LobbyGroup.LobbyStatus.STARTING
+            ):
+                self.lobby.status = LobbyGroup.LobbyStatus.WAITING
+                self.lobby.save()
+
+                self.broadcast_player_list()
 
     def run_countdown(self):
         import time
 
         for seconds_left in range(5, 0, -1):
-            context = {"seconds": seconds_left}
-            html_snippet = render_to_string(
+
+            self.lobby.refresh_from_db()
+            if self.lobby.status != LobbyGroup.LobbyStatus.STARTING:
+                return
+
+            context = {"seconds_left": seconds_left}
+            html = render_to_string(
                 "fulabra_app/partials/countdown.html", {"context": context}
             )
 
             async_to_sync(self.channel_layer.group_send)(
                 self.lobby_code,
-                {"type": self.broadcast_html.__name__, "html": html_snippet},
+                {"type": self.broadcast_html.__name__, "html": html},
             )
+
+            cancel_button_html = render_to_string(
+                "fulabra_app/partials/cancel_button.html"
+            )
+            async_to_sync(self.channel_layer.send)(
+                self.channel_name,
+                {"type": self.broadcast_html.__name__, "html": cancel_button_html},
+            )
+
             time.sleep(1)
 
         self.lobby.status = LobbyGroup.LobbyStatus.PLAYING
@@ -101,7 +125,7 @@ class LobbyConsumer(WebsocketConsumer):
             {"type": self.broadcast_html.__name__, "html": html},
         )
 
-    def lobby_update_current_players(self, event):
+    def send_current_players(self, event):
         if self.lobby_player_membership:
             try:
                 self.lobby_player_membership.refresh_from_db()
@@ -119,10 +143,10 @@ class LobbyConsumer(WebsocketConsumer):
     def broadcast_html(self, event):
         self.send(text_data=event["html"])
 
-    def broadcast_player_list_update(self):
+    def broadcast_player_list(self):
         """Sends a signal to the entire group channel to refresh their lists."""
         async_to_sync(self.channel_layer.group_send)(
-            self.lobby_code, {"type": self.lobby_update_current_players.__name__}
+            self.lobby_code, {"type": self.send_current_players.__name__}
         )
 
     def send_error_message(self, message: str):

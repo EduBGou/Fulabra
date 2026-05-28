@@ -8,7 +8,7 @@
     <div id="error-message"></div>
 
     <div id="ws-connection" class="container-fluid min-vh-100 d-flex align-items-center justify-content-center bg-white text-black p-4" hx-ext="ws" ws-connect="/ws/lobby/{{ context.current_lobby.code }}/">
-      <div  class="row w-100 max-width-xl justify-content-center g-4">
+      <div class="row w-100 max-width-xl justify-content-center g-4">
         <div class="col-12 col-lg-7">
           <div id="game-container" class="card border-0 rounded-4 shadow-lg h-100 p-4">
             <div class="d-flex justify-content-between align-items-center mb-4 border-bottom border-secondary pb-3">
@@ -21,8 +21,8 @@
                 <button id="btn-invite" class="btn btn-outline-secondary rounded-pill px-4 btn-sm fw-bold transition-all" data-invite-link="{{ context.invite }}">Copy Invite Link</button>
               {% endif %}
             </div>
-            
-            {% comment %} {% include "fulabra_app/partials/player_list.html" %} {% endcomment %}
+
+            {% comment %} {% include 'fulabra_app/partials/player_list.html' %} {% endcomment %}
             <div id="player-list" class="d-flex flex-column gap-3 my-auto py-4 text-center">
               <div class="spinner-border text-secondary mx-auto d-flex text-center" role="status">
                 <span class="visually-hidden"></span>
@@ -74,7 +74,6 @@
         box-shadow: 0 0 0 0 rgba(40, 167, 69, 0);
       }
     }
-
   </style>
 
   <script>
