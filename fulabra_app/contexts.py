@@ -11,8 +11,9 @@ class RegisterContext:
     error_message : str = None
     error : str = None
 
+
 @dataclass
-class LobbyScreenContext:
+class PlayerListContext:
 
     lobby_player_membership : LobbyPlayer
     error_message :str  = None
@@ -20,6 +21,10 @@ class LobbyScreenContext:
     @property
     def lobby_players(self) -> List[User]:
         return [member.user for member in self.lobby_player_membership.lobby.memberships.all()]
+
+    @property
+    def lobby_leader(self) -> User:
+        return self.lobby_player_membership.lobby.leader
 
     @property
     def players_count(self) -> int:
@@ -36,7 +41,3 @@ class LobbyScreenContext:
     @property
     def lobby_is_full(self) -> bool:
         return self.players_count == 3
-
-    @property
-    def lobby_leader(self) -> User:
-        return self.lobby_player_membership.lobby.leader

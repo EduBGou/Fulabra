@@ -1,17 +1,49 @@
-<div id="player-list" hx-swap-oob="true">
-  <p>There is {{ context.players_count }}/3 players connected</p>
-  {% if context.lobby_is_full %}
-    {% if context.can_start_game %}
-      <button type="button" class="btn btn-info" hx-vals='{"action": "start_game"}' ws-send>
-        Start Game
-      </button>
-    {% else %}
-      <p>Please wait for the lobby host to start the match.</p>
-    {% endif %}
-  {% endif %}
-  <ul>
+<div id="player-list" hx-swap-oob="true" class="d-flex flex-column gap-3 my-auto py-4 text-center">
+  <div class="text-center mb-4">
+    <p class="fs-4 fw-bold m-0">
+      Connected Players: <span class="text-primary">{{ context.players_count }}</span> / 3
+    </p>
+  </div>
+
+  <div class="row row-cols-1 row-cols-md-3 g-3 justify-content-center mb-4">
     {% for p in context.lobby_players %}
-      <li>{{ p }}</li>
+      <div class="col">
+        <div class="p-3 rounded-3 text-center d-flex flex-column align-items-center gap-2 position-relative px-2">
+          <div class="p-2 d-flex flex-column align-items-center" style="height: 5px;">
+          {% if p == context.lobby_leader %}
+              <span class="alert-warning position-absolute translate-middle badge rounded-pill font-monospace small px-2">
+                HOST
+              </span>
+              {% endif %}
+            </div>
+          <img src="{{ p.avatar.url|default:'avatars/default_avatar.png' }}" 
+               alt="Avatar" class="rounded-circle" 
+               style="width: 60px; height: 60px; object-fit: cover;">
+          <div class="fw-bold text-truncate w-100">{{ p.username }}</div>
+        </div>
+      </div>
     {% endfor %}
-  </ul>
+  </div>
+
+  {% if context.lobby_is_full %}
+    <div class="d-grid gap-2 col-6 mx-auto mt-4 animate__animated animate__fadeInUp">
+      {% if context.can_start_game %}
+        <button type="button"
+        class="btn btn-primary rounded-pill fw-extrabold"
+        hx-vals='{"action":"start_game"}'
+        ws-send>
+          START MATCH
+        </button>
+      {% else %}
+        <div class="text-center">
+          <span class="spinner-grow spinner-grow-sm text-primary me-2" role="status"></span>
+          Waiting for Host to start the game...
+        </div>
+      {% endif %}
+    </div>
+  {% else %}
+    <div class="text-secondary small mx-auto py-2 text-center">
+      <i class="bi bi-exclamation-triangle-fill"></i> Waiting for exactly 3 players to lock in...
+    </div>
+  {% endif %}
 </div>
