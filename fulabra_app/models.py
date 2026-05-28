@@ -69,7 +69,7 @@ class LobbyGroup(models.Model):
     )
 
     @property
-    def memberships(self) -> QuerySet:
+    def memberships(self) -> QuerySet[LobbyPlayer]:
         return getattr(self, LobbyGroup.memberships.__name__).all()
 
     def generate_unique_code(self) -> str:

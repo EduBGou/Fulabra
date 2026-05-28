@@ -8,6 +8,7 @@ from .models import *
 
 
 class LobbyConsumer(WebsocketConsumer):
+    disconnect_timers: dict[str, threading.Timer] = {}
 
     def connect(self):
         self.user: User = self.scope["user"]
@@ -20,6 +21,11 @@ class LobbyConsumer(WebsocketConsumer):
             self.send_error_message("This lobby isn't available or does not exist.")
             self.close()
             return
+
+        timer_key = f"{self.lobby_code}_{self.user.id}"
+        if timer_key in self.disconnect_timers:
+            self.disconnect_timers[timer_key].cancel()
+            del self.disconnect_timers[timer_key]
 
         current_player_count = self.lobby.memberships.count()
         self.lobby_player_membership = LobbyPlayer.objects.filter(
@@ -43,24 +49,21 @@ class LobbyConsumer(WebsocketConsumer):
         self.broadcast_player_list()
 
     def disconnect(self, code):
+
         async_to_sync(self.channel_layer.group_discard)(
             self.lobby_code, self.channel_name
         )
 
         if self.lobby_player_membership:
-            LobbyPlayer.objects.filter(id=self.lobby_player_membership.id).delete()
+            timer_key = f"{self.lobby_code}_{self.user.id}"
 
-        self.lobby.refresh_from_db()
-
-        if self.lobby.memberships.count() == 0:
             cleanup_timer = threading.Timer(
                 10,
-                self.delayed_lobby_cleanup,
-                args=[self.lobby_code],
+                self.player_cleanup,
+                args=[self.lobby_code, self.lobby_player_membership.id, timer_key],
             )
+            self.disconnect_timers[timer_key] = cleanup_timer
             cleanup_timer.start()
-        else:
-            self.broadcast_player_list()
 
     def receive(self, text_data=None, bytes_data=None):
         import json
@@ -81,6 +84,21 @@ class LobbyConsumer(WebsocketConsumer):
                 self.lobby.status = LobbyGroup.LobbyStatus.WAITING
                 self.lobby.save()
 
+                self.broadcast_player_list()
+
+    def player_cleanup(self, lobby_code: str, membership_id: int, timer_key: str):
+        if timer_key in self.disconnect_timers:
+            del self.disconnect_timers[timer_key]
+
+        LobbyPlayer.objects.filter(id=membership_id).delete()
+
+        fresh_lobby = LobbyGroup.objects.filter(code=lobby_code).first()
+        if fresh_lobby:
+            fresh_lobby.refresh_from_db()
+            if fresh_lobby.memberships.count() == 0:
+                fresh_lobby.delete()
+                print(f"Lobby {lobby_code} stayed empty and was deleted.")
+            else:
                 self.broadcast_player_list()
 
     def run_countdown(self):
@@ -156,11 +174,3 @@ class LobbyConsumer(WebsocketConsumer):
             "fulabra_app/partials/error_message.html", {"context": context}
         )
         self.send(text_data=html)
-
-    @staticmethod
-    def delayed_lobby_cleanup(lobby_code: str):
-        """Callback to destroy rooms that remain completely empty after the timeout period."""
-        fresh_lobby = LobbyGroup.objects.filter(code=lobby_code).first()
-        if fresh_lobby and fresh_lobby.memberships.count() == 0:
-            fresh_lobby.delete()
-            print(f"Lobby {lobby_code} stayed empty and was deleted by timer.")

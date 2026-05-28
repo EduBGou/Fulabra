@@ -10,6 +10,7 @@ from .forms import UserProfileForm
 from .models import *
 from .contexts import RegisterContext
 
+
 def index_view(request: HttpRequest):
     return render(request, "fulabra_app/index.html")
 
@@ -63,16 +64,28 @@ def lobby_invite_view(request: HttpRequest, lobby_code: str = ""):
 def lobby_room_view(request: HttpRequest, lobby_code: str):
     try:
         lobby = LobbyGroup.objects.get(code=lobby_code)
-        context = {
-            "current_lobby": lobby,
-            "invite": request.build_absolute_uri(
-                reverse("lobby_invite", kwargs={"lobby_code": lobby.code})
-            ),
-        }
-    except:
+        if not request.user.is_authenticated:
+            context = {
+                "error_message": f'You must to be logged in to enter in the lobby "{lobby_code}".'
+            }
+            return render(request, "fulabra_app/index.html", {"context": context})
+
+        is_player_in_lobby = lobby.memberships.filter(user=request.user).exists()
+        if lobby.status != LobbyGroup.LobbyStatus.WAITING and not is_player_in_lobby:
+            context = {"error_message": "This lobby already start the match."}
+            return render(request, "fulabra_app/index.html", {"context": context})
+        else:
+            context = {
+                "current_lobby": lobby,
+                "invite": request.build_absolute_uri(
+                    reverse("lobby_invite", kwargs={"lobby_code": lobby.code})
+                ),
+            }
+    except LobbyGroup.DoesNotExist:
         context = {
             "error_message": "This lobby no longer exists.",
         }
+        return render(request, "fulabra_app/index.html", {"context": context})
 
     return render(request, "fulabra_app/lobby.html", {"context": context})
 

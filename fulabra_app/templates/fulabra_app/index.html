@@ -19,5 +19,8 @@
       <button class="btn btn-primary" type="submit">Create Lobby</button>
     </div>
   </form>
+  {% include 'fulabra_app/partials/error_message.html' %}
+  {% if not error_message %}
   <div id="error-message"></div>
+  {% endif %}
 {% endblock %}
