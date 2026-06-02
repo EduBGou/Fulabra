@@ -15,7 +15,10 @@
 
           <div class="card-footer bg-light border-0 py-3 text-center">
             <p class="mb-0 small text-muted fw-medium">
-              Don't have an account?
+              <a href="{% url 'password_reset' %}" class="text-decoration-none text-primary fw-semibold ms-1">Forget Password?</a>
+            </p>
+            <p class="mb-0 small text-muted fw-medium">
+              Don't have an account?  
               <a href="{% url 'register' %}" class="text-decoration-none text-primary fw-semibold ms-1">Register here</a>
             </p>
           </div>
