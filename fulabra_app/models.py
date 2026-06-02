@@ -3,8 +3,10 @@ from random import choices
 
 from django.db import models
 from django.db.models import QuerySet
+from django.db.models.signals import pre_save
 from django.contrib.auth.models import AbstractUser
 from django.utils.translation import gettext_lazy as _
+from django.dispatch import receiver
 
 from fulabra import settings
 
@@ -158,3 +160,9 @@ class FriendRequest(models.Model):
         return (
             f"De {self.from_user.username} para {self.to_user.username} ({self.status})"
         )
+
+@receiver(pre_save, sender=User)
+def set_nickname(sender, instance, **kwargs):
+    if not instance.nickname:
+        instance.nickname = instance.username
+    
