@@ -1,15 +1,13 @@
-from django.db import IntegrityError
 from django.db.models import Q
 
 from django.shortcuts import redirect, render, get_object_or_404
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import login, logout
 from django.http import HttpRequest, HttpResponse
 from django.urls import reverse
 
-from .forms import UserProfileForm
+from .utils import hx_redirect
+from .forms import LoginForm, PlayerRegistrationForm, UserProfileForm
 from .models import *
-from .contexts import RegisterContext
-
 
 def index_view(request: HttpRequest):
     return render(request, "fulabra_app/index.html")
@@ -98,21 +96,22 @@ def lobby_room_view(request: HttpRequest, lobby_code: str):
 
 def login_view(request: HttpRequest):
     if request.method == "POST":
-        username = request.POST["username"]
-        password = request.POST["password"]
-        user = authenticate(request, username=username, password=password)
-
-        if user is not None:
+        form = LoginForm(request, data=request.POST)
+        if form.is_valid():
+            user = form.get_user()
             login(request, user)
             return hx_redirect("index")
-        else:
-            context = {"error_message": "Invalid username and/or password."}
+
+        if request.headers.get("HX-Request"):
             return render(
                 request,
-                "fulabra_app/partials/error_message.html",
-                {"context": context},
+                "fulabra_app/partials/login_form_inner.html",
+                {"form": form},
             )
-    return render(request, "fulabra_app/login.html")
+    else:
+        form = LoginForm()
+
+    return render(request, "fulabra_app/login.html", {"form": form})
 
 
 def logout_view(request: HttpRequest):
@@ -122,73 +121,23 @@ def logout_view(request: HttpRequest):
 
 def register_view(request: HttpRequest):
     if request.method == "POST":
-        username = request.POST.get("username", "").strip()
-        email = request.POST.get("email", "").strip()
-        password = request.POST.get("password", "")
-        confirmation = request.POST.get("confirmation", "")
+        form = PlayerRegistrationForm(request.POST)
 
-        print(username, email, password, confirmation)
+        if form.is_valid():
+            user = form.save()
+            login(request, user)
+            return hx_redirect("index")
 
-        context = RegisterContext(username, email, confirmation)
-
-        if len(password) < 8:
-            context.error = "password"
-            context.confirm_val = ""
-            context.error_message = "The password must contain at least 8 characters."
+        if request.headers.get("HX-Request"):
             return render(
-                request,
-                "fulabra_app/partials/register_message.html",
-                {"context": context},
+                request, "fulabra_app/partials/register_form_inner.html", {"form": form}
             )
-
-        if password.isnumeric():
-            context.error = "password"
-            context.confirm_val = ""
-            context.error_message = "The password password can't be entirely numeric."
-            return render(
-                request,
-                "fulabra_app/partials/register_message.html",
-                {"context": context},
-            )
-
-        if password != confirmation:
-            context.error = "confirmation"
-            context.confirm_val = ""
-            context.error_message = "Passwords must match."
-
-            return render(
-                request,
-                "fulabra_app/partials/register_message.html",
-                {"context": context},
-            )
-        
-        try:
-            user = User.objects.create_user(username, email, password)
-        except IntegrityError as e:
-
-            error_msg = str(e).lower()
-            if "username" in error_msg:
-                context.error_message = "Username already taken."
-                context.error = "username"
-            else:
-                context.error_message = "This email is already registered."
-                context.error = "email"
-
-            return render(
-                request,
-                "fulabra_app/partials/register_message.html",
-                {"context": context},
-            )
-
-        login(request, user)
-
-        return hx_redirect("index")
-
     else:
-        return render(request, "fulabra_app/register.html")
+        form = PlayerRegistrationForm()
+
+    return render(request, "fulabra_app/register.html", {"form": form})
 
 
-# Perfil do Usuário
 def profile_view(request: HttpRequest, username: str):
     profile_user = get_object_or_404(User, username=username)
     logged_user = request.user
@@ -219,7 +168,6 @@ def profile_view(request: HttpRequest, username: str):
     return render(request, "fulabra_app/profile.html", context)
 
 
-# Edição de perfil
 def edit_profile_view(request: HttpRequest):
     if not request.user.is_authenticated:
         return redirect("login")
@@ -245,9 +193,3 @@ def edit_profile_view(request: HttpRequest):
         form = UserProfileForm(instance=logged_user)
 
     return render(request, "fulabra_app/edit_profile.html", {"form": form})
-
-
-def hx_redirect(viewname: str):
-    response = HttpResponse()
-    response["HX-Redirect"] = reverse(viewname)
-    return response

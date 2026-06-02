@@ -1,0 +1,20 @@
+<form hx-post="{% url 'login' %}" hx-target="#login-card-body" hx-swap="innerHTML" novalidate>
+  {% csrf_token %}
+
+  {% if form.non_field_errors %}
+    {% for error in form.non_field_errors %}
+      <div class="alert alert-danger border-0 rounded-3 small mb-3">{{ error }}</div>
+    {% endfor %}
+  {% endif %}
+
+  {% for field in form %}
+    <div class="mb-3">
+      <label for="{{ field.id_for_label }}" class="form-label fw-medium text-secondary small">{{ field.label }}</label>
+      <div class="input-group">{{ field }}</div>
+    </div>
+  {% endfor %}
+
+  <div class="d-grid mt-4">
+    <button type="submit" class="btn btn-primary rounded-3 fw-semibold fs-6 py-2.5 shadow-sm"><i class="bi bi-box-arrow-in-right me-2"></i> Log In</button>
+  </div>
+</form>
