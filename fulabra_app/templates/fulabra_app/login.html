@@ -1,21 +1,51 @@
-{% extends "fulabra_app/layout.html" %}
+{% extends 'fulabra_app/layout.html' %}
 
 {% block body %}
+  <div class="container my-5">
+    <div class="row justify-content-center">
+      <div class="col-12 col-md-8 col-lg-5">
+        <div class="card shadow border-0 rounded-4 overflow-hidden">
+          <div class="bg-primary p-4 text-center text-white">
+            <h3 class="fw-bold mb-0">Welcome Back</h3>
+          </div>
 
-    <h2>Login</h2>
+          <div class="card-body p-4 p-sm-5">
+            <div id="error-message"></div>
 
-    <div id="error-message"></div>
-    <form hx-post="{% url 'login' %}" hx-swap="none">
-        {% csrf_token %}
-        <div class="form-group">
-            <input autofocus class="form-control" type="text" name="username" placeholder="Username">
+            <form hx-post="{% url 'login' %}" hx-swap="none" novalidate>
+              {% csrf_token %}
+
+              <div class="mb-3">
+                <label for="id_username" class="form-label fw-medium text-secondary small">Username</label>
+                <div class="input-group">
+                  <input type="text" name="username" id="id_username" class="form-control border-start-0 fs-6 bg-light" placeholder="Enter your username" autofocus required />
+                </div>
+              </div>
+
+              <div class="mb-2">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <label for="id_password" class="form-label fw-medium text-secondary small mb-0">Password</label>
+                  <a href="{% url 'password_reset' %}" class="text-decoration-none extra-small text-primary fw-medium" style="font-size: 0.8rem;">Forgot password?</a>
+                </div>
+                <div class="input-group">
+                  <input type="password" name="password" id="id_password" class="form-control  border-start-0 fs-6 bg-light" placeholder="••••••••" required />
+                </div>
+              </div>
+
+              <div class="d-grid mt-4">
+                <button type="submit" class="btn btn-primary  rounded-3 fw-semibold fs-6 py-2.5 shadow-sm"><i class="bi bi-box-arrow-in-right me-2"></i> Log In</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="card-footer bg-light border-0 py-3 text-center">
+            <p class="mb-0 small text-muted fw-medium">
+              Don't have an account?
+              <a href="{% url 'register' %}" class="text-decoration-none text-primary fw-semibold ms-1">Register here</a>
+            </p>
+          </div>
         </div>
-        <div class="form-group">
-            <input class="form-control" type="password" name="password" placeholder="Password">
-        </div>
-        <input class="btn btn-primary" type="submit" value="Login">
-    </form>
-
-    Don't have an account? <a href="{% url 'register' %}">Register here.</a>
-
+      </div>
+    </div>
+  </div>
 {% endblock %}

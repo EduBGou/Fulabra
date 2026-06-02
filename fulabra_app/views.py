@@ -122,12 +122,34 @@ def logout_view(request: HttpRequest):
 
 def register_view(request: HttpRequest):
     if request.method == "POST":
-        username = request.POST["username"]
-        email = request.POST["email"]
-        password = request.POST["password"]
-        confirmation = request.POST["confirmation"]
+        username = request.POST.get("username", "").strip()
+        email = request.POST.get("email", "").strip()
+        password = request.POST.get("password", "")
+        confirmation = request.POST.get("confirmation", "")
+
+        print(username, email, password, confirmation)
 
         context = RegisterContext(username, email, confirmation)
+
+        if len(password) < 8:
+            context.error = "password"
+            context.confirm_val = ""
+            context.error_message = "The password must contain at least 8 characters."
+            return render(
+                request,
+                "fulabra_app/partials/register_message.html",
+                {"context": context},
+            )
+
+        if password.isnumeric():
+            context.error = "password"
+            context.confirm_val = ""
+            context.error_message = "The password password can't be entirely numeric."
+            return render(
+                request,
+                "fulabra_app/partials/register_message.html",
+                {"context": context},
+            )
 
         if password != confirmation:
             context.error = "confirmation"
@@ -139,6 +161,7 @@ def register_view(request: HttpRequest):
                 "fulabra_app/partials/register_message.html",
                 {"context": context},
             )
+        
         try:
             user = User.objects.create_user(username, email, password)
         except IntegrityError as e:
