@@ -1,21 +1,26 @@
-{% extends "fulabra_app/layout.html" %}
+{% extends 'fulabra_app/layout.html' %}
 
 {% block body %}
+  <div class="container my-5">
+    <div class="row justify-content-center">
+      <div class="col-12 col-md-8 col-lg-5">
+        <div class="card shadow border-0 rounded-4 overflow-hidden">
+          <div class="bg-primary p-4 text-center text-white">
+            <h3 class="fw-bold mb-0">Welcome Back</h3>
+          </div>
 
-    <h2>Login</h2>
+          <div class="card-body p-4 p-sm-5" id="login-card-body">
+            {% include 'fulabra_app/partials/login_form_inner.html' %}
+          </div>
 
-    <div id="error-message"></div>
-    <form hx-post="{% url 'login' %}" hx-swap="none">
-        {% csrf_token %}
-        <div class="form-group">
-            <input autofocus class="form-control" type="text" name="username" placeholder="Username">
+          <div class="card-footer bg-light border-0 py-3 text-center">
+            <p class="mb-0 small text-muted fw-medium">
+              Don't have an account?
+              <a href="{% url 'register' %}" class="text-decoration-none text-primary fw-semibold ms-1">Register here</a>
+            </p>
+          </div>
         </div>
-        <div class="form-group">
-            <input class="form-control" type="password" name="password" placeholder="Password">
-        </div>
-        <input class="btn btn-primary" type="submit" value="Login">
-    </form>
-
-    Don't have an account? <a href="{% url 'register' %}">Register here.</a>
-
+      </div>
+    </div>
+  </div>
 {% endblock %}
