@@ -9,6 +9,7 @@ from .utils import hx_redirect
 from .forms import LoginForm, PlayerRegistrationForm, UserProfileForm
 from .models import *
 
+
 def index_view(request: HttpRequest):
     return render(request, "fulabra_app/index.html")
 
@@ -28,8 +29,10 @@ def handle_lobby_view(request: HttpRequest):
 
 
 def create_lobby_view(request: HttpRequest):
-    LobbyGroup.objects.filter(leader=request.user).update(leader=None)
-    new_lobby = LobbyGroup.objects.create(leader=request.user)
+    user: User = request.user
+    user_player = user.player
+    LobbyGroup.objects.filter(leader=user_player).update(leader=None)
+    new_lobby = LobbyGroup.objects.create(leader=user_player)
     return redirect("lobby_invite", lobby_code=new_lobby.code)
 
 
@@ -42,7 +45,11 @@ def lobby_invite_view(request: HttpRequest, lobby_code: str = ""):
                 "error_message": f'You must to be logged in to enter in the lobby "{lobby_code}".'
             }
             return render(request, "fulabra_app/index.html", {"context": context})
-        is_player_in_lobby = lobby.memberships.filter(user=request.user).exists()
+
+        user: User = request.user
+        user_player = user.player
+        is_player_in_lobby = lobby.memberships.filter(player=user_player).exists()
+
         if lobby.memberships.count() >= 3 and not is_player_in_lobby:
             context = {"error_message": f'The lobby with code "{lobby_code}" is full.'}
             return render(
@@ -74,7 +81,10 @@ def lobby_room_view(request: HttpRequest, lobby_code: str):
             }
             return render(request, "fulabra_app/index.html", {"context": context})
 
-        is_player_in_lobby = lobby.memberships.filter(user=request.user).exists()
+        user: User = request.user
+        user_player = user.player
+        is_player_in_lobby = lobby.memberships.filter(player=user_player).exists()
+
         if lobby.status != LobbyGroup.LobbyStatus.WAITING and not is_player_in_lobby:
             context = {"error_message": "This lobby already start the match."}
             return render(request, "fulabra_app/index.html", {"context": context})
@@ -139,29 +149,25 @@ def register_view(request: HttpRequest):
 
 
 def profile_view(request: HttpRequest, username: str):
-    profile_user = get_object_or_404(User, username=username)
-    logged_user = request.user
-    is_owner = logged_user == profile_user
-
-    recent_matches = Match.objects.filter(
-        Q(player1=profile_user) | Q(player2=profile_user) | Q(player3=profile_user)
-    ).order_by("-date_played")[:10]
+    user = User.objects.filter(username=username).first()
+    user_player = user.player
+    logged_user: User = request.user
+    is_owner = logged_user.player == user_player
 
     friend_status = None
 
     if not is_owner and logged_user.is_authenticated:
         friend_request = FriendRequest.objects.filter(
-            Q(from_user=logged_user, to_user=profile_user)
-            | Q(from_user=profile_user, to_user=logged_user)
+            Q(from_user=logged_user, to_user=user_player)
+            | Q(from_user=user_player, to_user=logged_user)
         ).first()
 
         if friend_request:
             friend_status = friend_request.status
 
     context = {
-        "profile_user": profile_user,
+        "user_player": user_player,
         "is_owner": is_owner,
-        "recent_matches": recent_matches,
         "friend_status": friend_status,
     }
 
@@ -172,24 +178,25 @@ def edit_profile_view(request: HttpRequest):
     if not request.user.is_authenticated:
         return redirect("login")
 
-    logged_user = request.user
+    user: User = request.user
+    user_player = user.player
 
     if request.method == "POST":
-        form = UserProfileForm(request.POST, request.FILES, instance=logged_user)
+        form = UserProfileForm(request.POST, request.FILES, instance=user_player)
 
         if form.is_valid():
-            user_instace = form.save(commit=False)
+            profile_instance = form.save(commit=False)
             preset = form.cleaned_data.get("selected_preset")
 
             if preset and not request.FILES.get("avatar"):
                 if preset == "default_avatar.png":
-                    user_instace.avatar = "avatars/default_avatar.png"
+                    profile_instance.avatar = "avatars/default_avatar.png"
                 else:
-                    user_instace.avatar = f"avatars/{preset}"
+                    profile_instance.avatar = f"avatars/{preset}"
 
-            user_instace.save()
-            return redirect("profile", username=logged_user.username)
+            profile_instance.save()
+            return redirect("profile", username=user.username)
     else:
-        form = UserProfileForm(instance=logged_user)
+        form = UserProfileForm(instance=user_player)
 
     return render(request, "fulabra_app/edit_profile.html", {"form": form})

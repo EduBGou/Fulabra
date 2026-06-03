@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from typing import List
-from .models import LobbyPlayer, User
-
+from .models import LobbyPlayer, Player, User
 
 @dataclass
 class RegisterContext:
@@ -19,11 +18,14 @@ class PlayerListContext:
     error_message :str  = None
 
     @property
-    def lobby_players(self) -> List[User]:
-        return [member.user for member in self.lobby_player_membership.lobby.memberships.all()]
+    def lobby_players(self) -> List[Player]:
+        return [
+            member.player
+            for member in self.lobby_player_membership.lobby.memberships.all()
+        ]
 
     @property
-    def lobby_leader(self) -> User:
+    def lobby_leader(self) -> Player:
         return self.lobby_player_membership.lobby.leader
 
     @property
@@ -32,7 +34,7 @@ class PlayerListContext:
 
     @property
     def user_is_leader(self) -> bool:
-        return self.lobby_leader == self.lobby_player_membership.user
+        return self.lobby_leader == self.lobby_player_membership.player
 
     @property
     def can_start_game(self) -> bool:

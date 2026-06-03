@@ -1,5 +1,5 @@
 from django import forms
-from .models import User
+from .models import Player, User
 from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 
@@ -81,7 +81,7 @@ class UserProfileForm(forms.ModelForm):
     selected_preset = forms.CharField(required=False, widget=forms.HiddenInput())
 
     class Meta:
-        model = User
+        model = Player
         fields = ["nickname", "avatar"]
         widgets = {
             "nickname": forms.TextInput(

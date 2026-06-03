@@ -32,7 +32,7 @@
                         <div class="text-center mb-4">
                           <div class="position-relative d-inline-block" style="width: 140px; height: 140px;">
                               <img id="current-avatar-preview" 
-                                  src="{% if user.avatar %}{{ user.avatar.url }}{% else %}{% static 'fulabra_app/images/avatars/default_avatar.png' %}{% endif %}" 
+                                  src="{% if user.player.avatar %}{{ user.player.avatar.url }}{% else %}{% static 'fulabra_app/images/avatars/default_avatar.png' %}{% endif %}" 
                                   class="rounded-circle img-thumbnail" 
                                   style="width: 140px; height: 140px; object-fit: cover;">
                               

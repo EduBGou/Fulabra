@@ -1,46 +1,58 @@
-from ast import List
 from random import choices
 
 from django.db import models
 from django.db.models import QuerySet
-from django.db.models.signals import pre_save
+from django.db.models.signals import post_save, pre_save
 from django.contrib.auth.models import AbstractUser
 from django.utils.translation import gettext_lazy as _
 from django.dispatch import receiver
 
 from fulabra import settings
 
-characters = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
-length = 6
-
-CHARACTERS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 LOBBY_CODE_LENGTH = 6
-
-
-LOBBYPLAYER_LOBBY_RELATED_NAME = "memberships"
 
 
 class User(AbstractUser):
     email = models.EmailField(("email address"), blank=True, unique=True)
-    nickname = models.CharField(max_length=16, blank=True, null=True)
-    avatar = models.ImageField(
-        upload_to="avatars/", default="avatars/default_avatar.png"
-    )
+
     wins = models.IntegerField(default=0)
     stars = models.IntegerField(default=0)
-
     friends = models.ManyToManyField("self", symmetrical=True, blank=True)
 
     @property
-    def leader_lobby(self) -> QuerySet[LobbyGroup]:
-        return getattr(self, User.leader_lobby.__name__).all()
+    def player(self) -> Player:
+        return getattr(self, User.player.__name__).first()
+
+
+class Player(models.Model):
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name=User.player.__name__,
+        null=True,
+        blank=True,
+    )
+
+    nickname = models.CharField(max_length=16)
+    avatar = models.ImageField(
+        upload_to="avatars/", default="avatars/default_avatar.png"
+    )
 
     @property
-    def membership(self) -> QuerySet[LobbyPlayer]:
-        return getattr(self, User.membership.__name__).all()
+    def is_guest(self) -> bool:
+        return self.user is None
+
+    @property
+    def leader_lobby(self) -> LobbyGroup:
+        return getattr(self, Player.leader_lobby.__name__).first()
+
+    @property
+    def membership(self) -> LobbyPlayer:
+        return getattr(self, Player.membership.__name__).first()
 
     def __str__(self):
-        return f"{self.username}"
+        return f"{self.nickname}"
 
 
 class LobbyGroup(models.Model):
@@ -59,11 +71,11 @@ class LobbyGroup(models.Model):
     )
 
     leader = models.OneToOneField(
-        User,
+        Player,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name=User.leader_lobby.__name__,
+        related_name=Player.leader_lobby.__name__,
     )
 
     status = models.CharField(
@@ -81,13 +93,13 @@ class LobbyGroup(models.Model):
             if not LobbyGroup.objects.filter(code=new_code).exists():
                 return new_code
 
-    def save(self, *args, **kwargs):
-        if not self.code:
-            self.code = self.generate_unique_code()
-        super().save(*args, **kwargs)
+    # def save(self, *args, **kwargs):
+    #     if not self.code:
+    #         self.code = self.generate_unique_code()
+    #     super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"Lobby {self.code} ({self.status()})"
+        return f"Lobby {self.code} ({self.status})"
 
 
 class LobbyPlayer(models.Model):
@@ -96,16 +108,16 @@ class LobbyPlayer(models.Model):
         on_delete=models.CASCADE,
         related_name=LobbyGroup.memberships.__name__,
     )
-    user = models.OneToOneField(
-        settings.AUTH_USER_MODEL,
+    player = models.OneToOneField(
+        Player,
         on_delete=models.CASCADE,
-        related_name=User.membership.__name__,
+        related_name=Player.membership.__name__,
     )
 
     joined_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.user} is in {self.lobby}"
+        return f"{self.player} is in {self.lobby}"
 
 
 class Match(models.Model):
@@ -161,8 +173,14 @@ class FriendRequest(models.Model):
             f"De {self.from_user.username} para {self.to_user.username} ({self.status})"
         )
 
-@receiver(pre_save, sender=User)
-def set_nickname(sender, instance, **kwargs):
-    if not instance.nickname:
-        instance.nickname = instance.username
-    
+
+@receiver(post_save, sender=User)
+def create_user(sender, instance: User, created, **kwargs):
+    if created:
+        Player.objects.create(user=instance, nickname=instance.username)
+
+
+@receiver(pre_save, sender=LobbyGroup)
+def create_user(sender, instance: LobbyGroup, **kwargs):
+    if not instance.code:
+        instance.code = instance.generate_unique_code()

@@ -22,6 +22,9 @@ class LobbyConsumer(WebsocketConsumer):
             self.close()
             return
 
+        if self.user.player is None:
+            self.user.player = Player.objects.create(nickname=self.user.username)
+
         timer_key = f"{self.lobby_code}_{self.user.id}"
         if timer_key in self.disconnect_timers:
             self.disconnect_timers[timer_key].cancel()
@@ -29,7 +32,7 @@ class LobbyConsumer(WebsocketConsumer):
 
         current_player_count = self.lobby.memberships.count()
         self.lobby_player_membership = LobbyPlayer.objects.filter(
-            lobby=self.lobby, user=self.user
+            lobby=self.lobby, player=self.user.player
         ).first()
 
         if not self.lobby_player_membership:
@@ -39,9 +42,9 @@ class LobbyConsumer(WebsocketConsumer):
                 self.close()
                 return
 
-            LobbyPlayer.objects.filter(user=self.user).delete()
+            LobbyPlayer.objects.filter(player=self.user.player).delete()
             self.lobby_player_membership = LobbyPlayer.objects.create(
-                lobby=self.lobby, user=self.user
+                lobby=self.lobby, player=self.user.player
             )
 
         self.accept()
@@ -72,14 +75,14 @@ class LobbyConsumer(WebsocketConsumer):
         data = json.loads(text_data)
         if data.get("action") == "start_game":
             self.lobby.refresh_from_db()
-            if self.lobby.memberships.count() == 3 and self.lobby.leader == self.user:
+            if self.lobby.memberships.count() == 3 and self.lobby.leader == self.user.player:
                 self.lobby.status = LobbyGroup.LobbyStatus.STARTING
                 self.lobby.save()
             threading.Thread(target=self.run_countdown, daemon=True).start()
         elif data.get("action") == "cancel_match":
             self.lobby.refresh_from_db()
             if (
-                self.lobby.leader == self.user
+                self.lobby.leader == self.user.player
                 and self.lobby.status == LobbyGroup.LobbyStatus.STARTING
             ):
                 self.lobby.status = LobbyGroup.LobbyStatus.WAITING
@@ -100,9 +103,9 @@ class LobbyConsumer(WebsocketConsumer):
         if fresh_lobby.memberships.count() == 0:
             fresh_lobby.delete()
             print(f"Lobby {lobby_code} stayed empty and was deleted.")
-        else:            
+        else:
             fresh_lobby.leader = (
-                LobbyPlayer.objects.filter(lobby=fresh_lobby).first().user
+                LobbyPlayer.objects.filter(lobby=fresh_lobby).first().player
             )
             fresh_lobby.save()
             self.broadcast_player_list()

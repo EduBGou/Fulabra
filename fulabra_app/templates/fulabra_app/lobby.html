@@ -17,7 +17,7 @@
                 <h2 class="text-dark fw-extrabold m-0">Lobby #{{ context.current_lobby.code }}</h2>
               </div>
 
-              {% if context.current_lobby.leader == user %}
+              {% if context.current_lobby.leader == user.player %}
                 <button id="btn-invite" class="btn btn-outline-secondary rounded-pill px-4 btn-sm fw-bold transition-all" data-invite-link="{{ context.invite }}">Copy Invite Link</button>
               {% endif %}
             </div>
@@ -34,7 +34,7 @@
           </div>
         </div>
 
-        {% if context.current_lobby.leader == user %}
+        {% if context.current_lobby.leader == user.player %}
           {% include 'fulabra_app/partials/online_friends_list.html' %}
         {% endif %}
       </div>
