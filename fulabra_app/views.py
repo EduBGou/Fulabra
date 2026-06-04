@@ -40,15 +40,16 @@ def lobby_invite_view(request: HttpRequest, lobby_code: str = ""):
     lobby_code = lobby_code.upper()
     try:
         lobby = LobbyGroup.objects.get(code=lobby_code)
-        if not request.user.is_authenticated:
-            context = {
-                "error_message": f'You must to be logged in to enter in the lobby "{lobby_code}".'
-            }
-            return render(request, "fulabra_app/index.html", {"context": context})
-
         user: User = request.user
-        user_player = user.player
-        is_player_in_lobby = lobby.memberships.filter(player=user_player).exists()
+        if user.is_authenticated:
+            player = user.player
+        else:
+            player = Player.objects.filter(nickname="guest").first()
+            if player is None:
+                player = Player.objects.create(nickname="guest")
+            request.session["guest_player_id"] = player.id
+
+        is_player_in_lobby = lobby.memberships.filter(player=player).exists()
 
         if lobby.memberships.count() >= 3 and not is_player_in_lobby:
             context = {"error_message": f'The lobby with code "{lobby_code}" is full.'}
@@ -75,15 +76,16 @@ def lobby_invite_view(request: HttpRequest, lobby_code: str = ""):
 def lobby_room_view(request: HttpRequest, lobby_code: str):
     try:
         lobby = LobbyGroup.objects.get(code=lobby_code)
-        if not request.user.is_authenticated:
-            context = {
-                "error_message": f'You must to be logged in to enter in the lobby "{lobby_code}".'
-            }
-            return render(request, "fulabra_app/index.html", {"context": context})
-
         user: User = request.user
-        user_player = user.player
-        is_player_in_lobby = lobby.memberships.filter(player=user_player).exists()
+        if user.is_authenticated:
+            player = user.player
+        else:
+            guest_player_id = request.session.get("guest_player_id")
+            player = Player.objects.filter(id=guest_player_id).first()
+            if player is None:
+                return redirect("lobby_invite", lobby_code=lobby_code)
+
+        is_player_in_lobby = lobby.memberships.filter(player=player).exists()
 
         if lobby.status != LobbyGroup.LobbyStatus.WAITING and not is_player_in_lobby:
             context = {"error_message": "This lobby already start the match."}

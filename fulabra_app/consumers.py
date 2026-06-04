@@ -1,9 +1,9 @@
 import threading
 from channels.generic.websocket import WebsocketConsumer
 from django.template.loader import render_to_string
+from django.contrib.sessions.backends.base import SessionBase
 from asgiref.sync import async_to_sync
 from .contexts import *
-
 from .models import *
 
 
@@ -12,27 +12,39 @@ class LobbyConsumer(WebsocketConsumer):
 
     def connect(self):
         self.user: User = self.scope["user"]
+        self.session: SessionBase = self.scope.get("session", {})
         self.lobby_code: str = self.scope["url_route"]["kwargs"]["lobby_code"]
         self.lobby = LobbyGroup.objects.filter(code=self.lobby_code).first()
         self.lobby_player_membership: LobbyPlayer = None
 
-        if not self.user.is_authenticated or not self.lobby:
+        if not self.lobby:
             self.accept()
-            self.send_error_message("This lobby isn't available or does not exist.")
+            self.send_error_message("This lobby doesn't exist.")
             self.close()
             return
 
-        if self.user.player is None:
-            self.user.player = Player.objects.create(nickname=self.user.username)
+        if self.user.is_authenticated:
+            self.player = self.user.player
+        else:
+            guest_player_id = self.session.get("guest_player_id")
+            self.player = (
+                Player.objects.filter(id=guest_player_id).first()
+                if guest_player_id
+                else None
+            )
+        if not self.player:
+            self.player = Player.objects.create(nickname="guest")
+            self.session["guest_player_id"] = self.player.id
+            self.session.save()
 
-        timer_key = f"{self.lobby_code}_{self.user.id}"
+        timer_key = f"{self.lobby_code}_{self.player.id}"
         if timer_key in self.disconnect_timers:
             self.disconnect_timers[timer_key].cancel()
             del self.disconnect_timers[timer_key]
 
         current_player_count = self.lobby.memberships.count()
         self.lobby_player_membership = LobbyPlayer.objects.filter(
-            lobby=self.lobby, player=self.user.player
+            lobby=self.lobby, player=self.player
         ).first()
 
         if not self.lobby_player_membership:
@@ -42,9 +54,9 @@ class LobbyConsumer(WebsocketConsumer):
                 self.close()
                 return
 
-            LobbyPlayer.objects.filter(player=self.user.player).delete()
+            LobbyPlayer.objects.filter(player=self.player).delete()
             self.lobby_player_membership = LobbyPlayer.objects.create(
-                lobby=self.lobby, player=self.user.player
+                lobby=self.lobby, player=self.player
             )
 
         self.accept()
@@ -59,7 +71,7 @@ class LobbyConsumer(WebsocketConsumer):
         )
 
         if self.lobby_player_membership:
-            timer_key = f"{self.lobby_code}_{self.user.id}"
+            timer_key = f"{self.lobby_code}_{self.player.id}"
 
             cleanup_timer = threading.Timer(
                 10,
@@ -75,14 +87,14 @@ class LobbyConsumer(WebsocketConsumer):
         data = json.loads(text_data)
         if data.get("action") == "start_game":
             self.lobby.refresh_from_db()
-            if self.lobby.memberships.count() == 3 and self.lobby.leader == self.user.player:
+            if self.lobby.memberships.count() == 3 and self.lobby.leader == self.player:
                 self.lobby.status = LobbyGroup.LobbyStatus.STARTING
                 self.lobby.save()
             threading.Thread(target=self.run_countdown, daemon=True).start()
         elif data.get("action") == "cancel_match":
             self.lobby.refresh_from_db()
             if (
-                self.lobby.leader == self.user.player
+                self.lobby.leader == self.player
                 and self.lobby.status == LobbyGroup.LobbyStatus.STARTING
             ):
                 self.lobby.status = LobbyGroup.LobbyStatus.WAITING

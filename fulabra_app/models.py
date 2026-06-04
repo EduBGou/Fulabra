@@ -93,11 +93,6 @@ class LobbyGroup(models.Model):
             if not LobbyGroup.objects.filter(code=new_code).exists():
                 return new_code
 
-    # def save(self, *args, **kwargs):
-    #     if not self.code:
-    #         self.code = self.generate_unique_code()
-    #     super().save(*args, **kwargs)
-
     def __str__(self):
         return f"Lobby {self.code} ({self.status})"
 
