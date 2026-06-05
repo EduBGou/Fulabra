@@ -1,7 +1,6 @@
 from django.http import HttpRequest, HttpResponse
 from django.urls import reverse
-from fulabra_app.models import Player
-
+from .models import LobbyGroup, Player
 
 def hx_redirect(viewname: str, kwargs: dict = None):
     response = HttpResponse()
@@ -21,3 +20,10 @@ def set_player_preset_avatar(
             else f"avatars/{preset}"
         )
     return player.save()
+
+
+def lobby_is_full(lobby: LobbyGroup, player: Player = None) -> bool:
+    max_capacity = 3
+    if player and lobby.memberships.filter(player=player).exists():
+        return False
+    return lobby.memberships.count() >= max_capacity
