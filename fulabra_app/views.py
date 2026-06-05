@@ -1,12 +1,12 @@
 from django.db.models import Q
 
-from django.shortcuts import redirect, render, get_object_or_404
+from django.shortcuts import redirect, render
 from django.contrib.auth import login, logout
 from django.http import HttpRequest, HttpResponse
 from django.urls import reverse
 
-from .utils import hx_redirect
-from .forms import LoginForm, PlayerRegistrationForm, UserProfileForm
+from .utils import hx_redirect, set_player_preset_avatar
+from .forms import GuestForm, LoginForm, UserRegistrationForm, EditPlayerForm
 from .models import *
 
 
@@ -44,10 +44,15 @@ def lobby_invite_view(request: HttpRequest, lobby_code: str = ""):
         if user.is_authenticated:
             player = user.player
         else:
-            player = Player.objects.filter(nickname="guest").first()
+            guest_player_id = request.session.get("guest_player_id")
+            player = Player.objects.filter(id=guest_player_id).first()
+
             if player is None:
-                player = Player.objects.create(nickname="guest")
-            request.session["guest_player_id"] = player.id
+                return (
+                    hx_redirect("guest_form", {"lobby_code": lobby_code})
+                    if request.headers.get("HX-Request")
+                    else redirect("guest_form", lobby_code=lobby_code)
+                )
 
         is_player_in_lobby = lobby.memberships.filter(player=player).exists()
 
@@ -63,14 +68,39 @@ def lobby_invite_view(request: HttpRequest, lobby_code: str = ""):
             request, "fulabra_app/partials/error_message.html", {"context": context}
         )
 
-    lobby_url = reverse("lobby_room", kwargs={"lobby_code": lobby_code})
+    return (
+        hx_redirect("lobby_room", {"lobby_code": lobby_code})
+        if request.headers.get("HX-Request")
+        else redirect("lobby_room", lobby_code=lobby_code)
+    )
 
-    if request.headers.get("HX-Request"):
-        response = HttpResponse(status=200)
-        response["HX-Redirect"] = lobby_url
-        return response
 
-    return redirect(lobby_url)
+def guest_form_view(request: HttpRequest, lobby_code: str = ""):
+    avatar_presets = [
+        {"filename": "avatar1.jpg"},
+        {"filename": "avatar2.jpg"},
+        {"filename": "avatar3.jpg"},
+        {"filename": "avatar4.jpg"},
+    ]
+    if request.method == "POST":
+        form = GuestForm(request.POST, request.FILES)
+        if form.is_valid():
+
+            player: Player = form.save(commit=False)
+            preset = form.cleaned_data.get("selected_preset")
+            set_player_preset_avatar(request, player, preset)
+
+            player.save()
+            request.session["guest_player_id"] = player.id
+            return redirect("lobby_room", lobby_code=lobby_code)
+    else:
+        form = GuestForm()
+
+    return render(
+        request,
+        "fulabra_app/guest_form.html",
+        {"form": form, "lobby_code": lobby_code, "avatar_presets": avatar_presets},
+    )
 
 
 def lobby_room_view(request: HttpRequest, lobby_code: str):
@@ -133,7 +163,7 @@ def logout_view(request: HttpRequest):
 
 def register_view(request: HttpRequest):
     if request.method == "POST":
-        form = PlayerRegistrationForm(request.POST)
+        form = UserRegistrationForm(request.POST)
 
         if form.is_valid():
             user = form.save()
@@ -145,7 +175,7 @@ def register_view(request: HttpRequest):
                 request, "fulabra_app/partials/register_form_inner.html", {"form": form}
             )
     else:
-        form = PlayerRegistrationForm()
+        form = UserRegistrationForm()
 
     return render(request, "fulabra_app/register.html", {"form": form})
 
@@ -184,21 +214,16 @@ def edit_profile_view(request: HttpRequest):
     user_player = user.player
 
     if request.method == "POST":
-        form = UserProfileForm(request.POST, request.FILES, instance=user_player)
+        form = EditPlayerForm(request.POST, request.FILES, instance=user_player)
 
         if form.is_valid():
-            profile_instance = form.save(commit=False)
+            player: Player = form.save(commit=False)
             preset = form.cleaned_data.get("selected_preset")
 
-            if preset and not request.FILES.get("avatar"):
-                if preset == "default_avatar.png":
-                    profile_instance.avatar = "avatars/default_avatar.png"
-                else:
-                    profile_instance.avatar = f"avatars/{preset}"
+            set_player_preset_avatar(request, player, preset)
 
-            profile_instance.save()
             return redirect("profile", username=user.username)
     else:
-        form = UserProfileForm(instance=user_player)
+        form = EditPlayerForm(instance=user_player)
 
     return render(request, "fulabra_app/edit_profile.html", {"form": form})

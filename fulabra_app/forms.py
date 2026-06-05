@@ -6,7 +6,7 @@ from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 User = get_user_model()
 
 
-class PlayerRegistrationForm(UserCreationForm):
+class UserRegistrationForm(UserCreationForm):
     email = forms.EmailField(
         required=True,
         widget=forms.EmailInput(
@@ -54,6 +54,19 @@ class PlayerRegistrationForm(UserCreationForm):
             )
 
 
+class PlayerRegistrationForm(forms.ModelForm):
+    nickname = forms.CharField(
+        widget=forms.TextInput(
+            attrs={
+                "id": "id_nickname",
+                "class": "form-control border-start-0 fs-6 bg-light",
+                "placeholder": "Enter your nickname",
+                "autofocus": True,
+            }
+        )
+    )
+
+
 class LoginForm(AuthenticationForm):
     username = forms.CharField(
         widget=forms.TextInput(
@@ -77,7 +90,33 @@ class LoginForm(AuthenticationForm):
     )
 
 
-class UserProfileForm(forms.ModelForm):
+class GuestForm(forms.ModelForm):
+    selected_preset = forms.CharField(required=False, widget=forms.HiddenInput())
+
+    class Meta:
+        model = Player
+        fields = ["nickname"]
+
+        widgets = {
+            "nickname": forms.TextInput(
+                attrs={
+                    "class": "form-control",
+                    "placeholder": "Enter your custom nickname...",
+                    "maxlength": "16",
+                }
+            ),
+        }
+
+    def clean_nickname(self):
+        nickname: str = self.cleaned_data.get("nickname")
+        if not nickname or len(nickname.strip()) < 3:
+            raise forms.ValidationError(
+                "Your nickname must be at least 3 characters long."
+            )
+        return nickname
+
+
+class EditPlayerForm(forms.ModelForm):
     selected_preset = forms.CharField(required=False, widget=forms.HiddenInput())
 
     class Meta:
@@ -87,7 +126,8 @@ class UserProfileForm(forms.ModelForm):
             "nickname": forms.TextInput(
                 attrs={
                     "class": "form-control",
-                    "placeholder": "Escolhe seu novo apelido",
+                    "placeholder": "Enter your custom nickname...",
+                    "maxlength": "16",
                 }
             ),
             "avatar": forms.FileInput(
@@ -96,9 +136,11 @@ class UserProfileForm(forms.ModelForm):
         }
 
     def clean_nickname(self):
-        nickname = self.cleaned_data.get("nickname")
+        nickname: str = self.cleaned_data.get("nickname")
 
-        if not nickname or len(nickname.strip()) == 0:
-            raise forms.ValidationError("Escolha um apelido válido.")
+        if not nickname or len(nickname.strip()) < 3:
+            raise forms.ValidationError(
+                "Your nickname must be at least 3 characters long."
+            )
 
         return nickname.strip()

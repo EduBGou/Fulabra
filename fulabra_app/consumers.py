@@ -106,7 +106,11 @@ class LobbyConsumer(WebsocketConsumer):
         if timer_key in self.disconnect_timers:
             del self.disconnect_timers[timer_key]
 
-        LobbyPlayer.objects.filter(id=membership_id).delete()
+        memebership = LobbyPlayer.objects.filter(id=membership_id).first()
+        player = memebership.player
+        if player.user is None:
+            player.delete()
+        memebership.delete()
 
         fresh_lobby = LobbyGroup.objects.filter(code=lobby_code).first()
         if not fresh_lobby:

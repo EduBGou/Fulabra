@@ -1,0 +1,57 @@
+{% extends 'fulabra_app/layout.html' %}
+{% block body %}
+  <div class="guest-section">
+    <h3>Play as a Guest</h3>
+
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+        {% for error in form.non_field_errors %}
+          <div class="alert alert-danger border-0 rounded-3 small mb-3">{{ error }}</div>
+        {% endfor %}
+      {% endif %}
+
+      {{ form.selected_preset }}
+
+      <div class="mb-3">
+        <label for="{{ form.nickname.id_for_label }}" class="form-label fw-medium text-secondary small">{{ form.nickname.label }}</label>
+        <div class="input-group">{{ form.nickname }}</div>
+        {% if form.nickname.errors %}
+          <div class="text-danger small mt-1">{{ form.nickname.errors.0 }}</div>
+        {% endif %}
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label fw-medium text-secondary small">Choose an Avatar Option</label>
+        <div class="row g-2 text-center mb-3">
+          {% for preset in avatar_presets %}
+            <div class="col-4 col-sm-3 col-md-2">
+              <div class="avatar-option p-2 border rounded-3 cursor-pointer {% if forloop.first %}border-primary bg-light active{% endif %}" data-preset-filename="{{ preset.filename }}">
+                <img src="/static/fulabra_app/images/avatars/{{ preset.filename }}" class="img-fluid rounded-circle mb-1" style="max-height: 60px; aspect-ratio: 1/1; object-fit: cover;" alt="{{ preset.filename }}" />
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="d-grid mt-4">
+        <button type="submit" class="btn btn-primary rounded-3 fw-semibold fs-6 py-2.5 shadow-sm"><i class="bi bi-box-arrow-in-right me-2"></i>Enter</button>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    const selected_preset_ipt_label = document.getElementById('id_selected_preset')
+    selected_preset_ipt_label.style.display = 'none'
+    selected_preset_ipt_label.value = 'default_avatar.png'
+    const avatarOptions = document.querySelectorAll('.avatar-option')
+    avatarOptions.forEach((opt) => opt.addEventListener('click', () => selectAvatarPreset(opt)))
+    
+    function selectAvatarPreset(element) {
+      fileName = element.dataset.presetFilename
+      selected_preset_ipt_label.value = fileName
+      avatarOptions.forEach((opt) => opt.classList.remove('border-primary', 'bg-light'))
+      element.classList.add('border-primary', 'bg-light')
+    }
+  </script>
+{% endblock %}
