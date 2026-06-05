@@ -1,21 +1,21 @@
 from dataclasses import dataclass
 from typing import List
-from .models import LobbyPlayer, Player, User
+from .models import LobbyGroup, LobbyPlayer, Player, User
 
 @dataclass
 class RegisterContext:
-    username_val : str
-    email_val : str
-    confirm_val : str
-    error_message : str = None
-    error : str = None
+    username_val: str
+    email_val: str
+    confirm_val: str
+    error_message: str = None
+    error: str = None
 
 
 @dataclass
 class PlayerListContext:
 
-    lobby_player_membership : LobbyPlayer
-    error_message :str  = None
+    lobby_player_membership: LobbyPlayer
+    error_message: str = None
 
     @property
     def lobby_players(self) -> List[Player]:
@@ -43,3 +43,11 @@ class PlayerListContext:
     @property
     def lobby_is_full(self) -> bool:
         return self.players_count == 3
+
+
+@dataclass
+class LobbyContext:
+    current_lobby: LobbyGroup
+    player: Player
+    invite: str
+    error_message: str = None

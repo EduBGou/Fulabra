@@ -40,7 +40,7 @@ class UserRegistrationForm(UserCreationForm):
                 {
                     "id": "password-field",
                     "class": "form-control border-start-0 fs-6 bg-light",
-                    "placeholder": "••••••••",
+                    "placeholder": "Enter your password",
                 }
             )
         if "password2" in self.fields:
@@ -84,7 +84,7 @@ class LoginForm(AuthenticationForm):
             attrs={
                 "id": "id_password",
                 "class": "form-control border-start-0 fs-6 bg-light",
-                "placeholder": "••••••••",
+                "placeholder": "Enter your password",
             }
         )
     )
@@ -116,31 +116,13 @@ class GuestForm(forms.ModelForm):
         return nickname
 
 
-class EditPlayerForm(forms.ModelForm):
-    selected_preset = forms.CharField(required=False, widget=forms.HiddenInput())
-
+class EditPlayerForm(GuestForm):
     class Meta:
         model = Player
-        fields = ["nickname", "avatar"]
+        fields = fields = GuestForm.Meta.fields + ["avatar"]
         widgets = {
-            "nickname": forms.TextInput(
-                attrs={
-                    "class": "form-control",
-                    "placeholder": "Enter your custom nickname...",
-                    "maxlength": "16",
-                }
-            ),
+            **GuestForm.Meta.widgets,
             "avatar": forms.FileInput(
                 attrs={"class": "d-none", "accept": "image/png, image/jpeg, image/jpg"}
             ),
         }
-
-    def clean_nickname(self):
-        nickname: str = self.cleaned_data.get("nickname")
-
-        if not nickname or len(nickname.strip()) < 3:
-            raise forms.ValidationError(
-                "Your nickname must be at least 3 characters long."
-            )
-
-        return nickname.strip()

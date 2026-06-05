@@ -5,6 +5,7 @@ class FulabraappConfig(AppConfig):
 
     def ready(self):
         from .models import LobbyPlayer, LobbyGroup
+        import fulabra_app.signals
 
         try:
             LobbyPlayer.objects.all().delete()

@@ -5,6 +5,8 @@ from django.contrib.auth import login, logout
 from django.http import HttpRequest, HttpResponse
 from django.urls import reverse
 
+from fulabra_app.contexts import LobbyContext
+
 from .utils import hx_redirect, set_player_preset_avatar
 from .forms import GuestForm, LoginForm, UserRegistrationForm, EditPlayerForm
 from .models import *
@@ -94,6 +96,13 @@ def guest_form_view(request: HttpRequest, lobby_code: str = ""):
             request.session["guest_player_id"] = player.id
             return redirect("lobby_room", lobby_code=lobby_code)
     else:
+        if request.session.get("guest_player_id"):
+            player = Player.objects.filter(
+                id=request.session["guest_player_id"]
+            ).first()
+            if player:
+                player.membership.delete()
+                player.delete()
         form = GuestForm()
 
     return render(
@@ -118,22 +127,30 @@ def lobby_room_view(request: HttpRequest, lobby_code: str):
         is_player_in_lobby = lobby.memberships.filter(player=player).exists()
 
         if lobby.status != LobbyGroup.LobbyStatus.WAITING and not is_player_in_lobby:
-            context = {"error_message": "This lobby already start the match."}
-            return render(request, "fulabra_app/index.html", {"context": context})
+            return render(
+                request,
+                "fulabra_app/index.html",
+                {"context": {"error_message": "This lobby already start the match."}},
+            )
         else:
-            context = {
-                "current_lobby": lobby,
-                "invite": request.build_absolute_uri(
-                    reverse("lobby_invite", kwargs={"lobby_code": lobby.code})
-                ),
-            }
+            invite = request.build_absolute_uri(
+                reverse("lobby_invite", kwargs={"lobby_code": lobby.code})
+            )
+            return render(
+                request,
+                "fulabra_app/lobby.html",
+                {"context": LobbyContext(lobby, player, invite)},
+            )
     except LobbyGroup.DoesNotExist:
-        context = {
-            "error_message": "This lobby no longer exists.",
-        }
-        return render(request, "fulabra_app/index.html", {"context": context})
-
-    return render(request, "fulabra_app/lobby.html", {"context": context})
+        return render(
+            request,
+            "fulabra_app/index.html",
+            {
+                "context": {
+                    "error_message": "This lobby no longer exists.",
+                }
+            },
+        )
 
 
 def login_view(request: HttpRequest):

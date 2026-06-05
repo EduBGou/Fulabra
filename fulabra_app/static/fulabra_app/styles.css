@@ -1,6 +1,9 @@
 .body {
     margin: 2%;
 }
+.guest-form-container {
+    max-width: 60%;
+}
 .invite-container {
     max-width: 230px;
     margin: 0px;
@@ -12,13 +15,17 @@
     border: none;
 }
 
-/* Preset de foto de perfil */
+.thick-border {
+    border-width: 3px !important;
+}
+
 .preset-option {
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
+
 .preset-option:hover {
     transform: scale(1.08);
-    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
 }
 
 #avatarTabs .nav-link {
@@ -27,6 +34,7 @@
     background-color: #f1f3f4;
     margin: 0 5px;
 }
+
 #avatarTabs .nav-link.active {
     background-color: #1a73e8 !important;
     color: #fff;
@@ -35,6 +43,7 @@
 .upload-box {
     transition: border-color 0.2s ease, background-color 0.2s ease;
 }
+
 .upload-box:hover {
     border-color: #1a73e8 !important;
     background-color: #f4f8fe !important;
@@ -43,22 +52,21 @@
 
 /* Dropdown foto de perfil*/
 .dropdown-menu {
-    min-width: 130px !important;   
-    padding: 0px 0 !important;     
-    border-radius: 0px !important; 
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important; 
+    min-width: 130px !important;
+        padding: 0px 0 !important;
+        border-radius: 0px !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
 }
 
 .dropdown-item {
-    padding: 4px 6px !important; 
-    font-size: 13px !important;   
-    color: #24292e !important;    
+    padding: 4px 6px !important;
+        font-size: 13px !important;
+        color: #24292e !important;
     transition: background-color 0.15s ease;
 }
 
 .dropdown-item:hover {
     background-color: #e6e6e6 !important;
-    color: #000000 !important;          
-    cursor: pointer;                      
+    color: #000000 !important;
+        cursor: pointer;
 }
-

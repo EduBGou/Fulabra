@@ -167,15 +167,3 @@ class FriendRequest(models.Model):
         return (
             f"De {self.from_user.username} para {self.to_user.username} ({self.status})"
         )
-
-
-@receiver(post_save, sender=User)
-def create_user(sender, instance: User, created, **kwargs):
-    if created:
-        Player.objects.create(user=instance, nickname=instance.username)
-
-
-@receiver(pre_save, sender=LobbyGroup)
-def create_user(sender, instance: LobbyGroup, **kwargs):
-    if not instance.code:
-        instance.code = instance.generate_unique_code()
