@@ -1,14 +1,11 @@
-from django.db.models import Q
-
 from django.shortcuts import redirect, render
 from django.contrib.auth import login, logout
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest
 from django.urls import reverse
-
-from fulabra_app.contexts import LobbyContext
-
-from .utils import hx_redirect, set_player_preset_avatar
+from django.db.models import Q
 from .forms import GuestForm, LoginForm, UserRegistrationForm, EditPlayerForm
+from .utils import hx_redirect, lobby_is_full, set_player_preset_avatar
+from .contexts import LobbyContext
 from .models import *
 
 
@@ -40,34 +37,32 @@ def create_lobby_view(request: HttpRequest):
 
 def lobby_invite_view(request: HttpRequest, lobby_code: str = ""):
     lobby_code = lobby_code.upper()
-    try:
-        lobby = LobbyGroup.objects.get(code=lobby_code)
-        user: User = request.user
-        if user.is_authenticated:
-            player = user.player
-        else:
-            guest_player_id = request.session.get("guest_player_id")
-            player = Player.objects.filter(id=guest_player_id).first()
+    lobby = LobbyGroup.objects.filter(code=lobby_code).first()
 
-            if player is None:
-                return (
-                    hx_redirect("guest_form", {"lobby_code": lobby_code})
-                    if request.headers.get("HX-Request")
-                    else redirect("guest_form", lobby_code=lobby_code)
-                )
-
-        is_player_in_lobby = lobby.memberships.filter(player=player).exists()
-
-        if lobby.memberships.count() >= 3 and not is_player_in_lobby:
-            context = {"error_message": f'The lobby with code "{lobby_code}" is full.'}
-            return render(
-                request, "fulabra_app/partials/error_message.html", {"context": context}
-            )
-
-    except LobbyGroup.DoesNotExist:
+    if not lobby:
         context = {"error_message": f'There isn\'t a lobby with code "{lobby_code}".'}
         return render(
             request, "fulabra_app/partials/error_message.html", {"context": context}
+        )
+
+    user: User = request.user
+    if user.is_authenticated:
+        player = user.player
+    else:
+        guest_player_id = request.session.get("guest_player_id")
+        player = Player.objects.filter(id=guest_player_id).first()
+
+    if lobby_is_full(lobby, player):
+        context = {"error_message": f'The lobby with code "{lobby_code}" is full.'}
+        return render(
+            request, "fulabra_app/partials/error_message.html", {"context": context}
+        )
+
+    if not player:
+        return (
+            hx_redirect("guest_form", {"lobby_code": lobby_code})
+            if request.headers.get("HX-Request")
+            else redirect("guest_form", lobby_code=lobby_code)
         )
 
     return (
@@ -78,12 +73,17 @@ def lobby_invite_view(request: HttpRequest, lobby_code: str = ""):
 
 
 def guest_form_view(request: HttpRequest, lobby_code: str = ""):
+    lobby = LobbyGroup.objects.filter(code=lobby_code).first()
+    if not lobby or lobby_is_full(lobby):
+        return redirect("lobby_invite", lobby_code=lobby_code)
+
     avatar_presets = [
         {"filename": "avatar1.jpg"},
         {"filename": "avatar2.jpg"},
         {"filename": "avatar3.jpg"},
         {"filename": "avatar4.jpg"},
     ]
+
     if request.method == "POST":
         form = GuestForm(request.POST, request.FILES)
         if form.is_valid():
@@ -113,43 +113,38 @@ def guest_form_view(request: HttpRequest, lobby_code: str = ""):
 
 
 def lobby_room_view(request: HttpRequest, lobby_code: str):
-    try:
-        lobby = LobbyGroup.objects.get(code=lobby_code)
-        user: User = request.user
-        if user.is_authenticated:
-            player = user.player
-        else:
-            guest_player_id = request.session.get("guest_player_id")
-            player = Player.objects.filter(id=guest_player_id).first()
-            if player is None:
-                return redirect("lobby_invite", lobby_code=lobby_code)
+    lobby = LobbyGroup.objects.filter(code=lobby_code).first()
 
-        is_player_in_lobby = lobby.memberships.filter(player=player).exists()
+    if not lobby:
+        context = {"error_message": "This lobby no longer exists."}
+        return render(request, "fulabra_app/index.html", {"context": context})
 
-        if lobby.status != LobbyGroup.LobbyStatus.WAITING and not is_player_in_lobby:
-            return render(
-                request,
-                "fulabra_app/index.html",
-                {"context": {"error_message": "This lobby already start the match."}},
-            )
-        else:
-            invite = request.build_absolute_uri(
-                reverse("lobby_invite", kwargs={"lobby_code": lobby.code})
-            )
-            return render(
-                request,
-                "fulabra_app/lobby.html",
-                {"context": LobbyContext(lobby, player, invite)},
-            )
-    except LobbyGroup.DoesNotExist:
+    user: User = request.user
+
+    if user.is_authenticated:
+        player = user.player
+    else:
+        guest_player_id = request.session.get("guest_player_id")
+        player = Player.objects.filter(id=guest_player_id).first()
+        if player is None:
+            return redirect("lobby_invite", lobby_code=lobby_code)
+
+    is_player_in_lobby = lobby.memberships.filter(player=player).exists()
+
+    if lobby.status != LobbyGroup.LobbyStatus.WAITING and not is_player_in_lobby:
         return render(
             request,
             "fulabra_app/index.html",
-            {
-                "context": {
-                    "error_message": "This lobby no longer exists.",
-                }
-            },
+            {"context": {"error_message": "This lobby already start the match."}},
+        )
+    else:
+        invite = request.build_absolute_uri(
+            reverse("lobby_invite", kwargs={"lobby_code": lobby.code})
+        )
+        return render(
+            request,
+            "fulabra_app/lobby.html",
+            {"context": LobbyContext(lobby, player, invite)},
         )
 
 
