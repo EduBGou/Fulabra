@@ -21,7 +21,7 @@ class PlayerListContext:
     def lobby_players(self) -> List[Player]:
         return [
             member.player
-            for member in self.lobby_player_membership.lobby.memberships.all()
+            for member in self.lobby_player_membership.lobby.lobby_memberships.all()
         ]
 
     @property
@@ -30,7 +30,7 @@ class PlayerListContext:
 
     @property
     def players_count(self) -> int:
-        return self.lobby_player_membership.lobby.memberships.count()
+        return self.lobby_player_membership.lobby.lobby_memberships.count()
 
     @property
     def user_is_leader(self) -> bool:

@@ -43,7 +43,7 @@ class LobbyConsumer(WebsocketConsumer):
             self.disconnect_timers[timer_key].cancel()
             del self.disconnect_timers[timer_key]
 
-        current_player_count = self.lobby.memberships.count()
+        current_player_count = self.lobby.lobby_memberships.count()
         self.lobby_player_membership = LobbyPlayer.objects.filter(
             lobby=self.lobby, player=self.player
         ).first()
@@ -88,7 +88,10 @@ class LobbyConsumer(WebsocketConsumer):
         data = json.loads(text_data)
         if data.get("action") == "start_game":
             self.lobby.refresh_from_db()
-            if self.lobby.memberships.count() == 3 and self.lobby.leader == self.player:
+            if (
+                self.lobby.lobby_memberships.count() == 3
+                and self.lobby.leader == self.player
+            ):
                 self.lobby.status = LobbyGroup.LobbyStatus.PLAYING
                 self.lobby.save()
 
@@ -138,7 +141,7 @@ class LobbyConsumer(WebsocketConsumer):
         if not fresh_lobby:
             return
 
-        if fresh_lobby.memberships.count() == 0:
+        if fresh_lobby.lobby_memberships.count() == 0:
             fresh_lobby.delete()
             print(f"Lobby {lobby_code} stayed empty and was deleted.")
         else:
