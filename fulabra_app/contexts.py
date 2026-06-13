@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from typing import List
-from .models import LobbyGroup, LobbyPlayer, Player, User
+from .models import GameRound, LobbyGroup, LobbyPlayer, Player, User, Word
 
 @dataclass
 class RegisterContext:
@@ -51,3 +51,13 @@ class LobbyContext:
     player: Player
     invite: str
     error_message: str = None
+
+
+@dataclass
+class WordFormContext:
+    lobby: LobbyGroup
+    round: GameRound
+
+    @property
+    def available_words(self) -> List[Word]:
+        return Word.objects.all()

@@ -1,4 +1,6 @@
+import asyncio
 import threading
+import time
 from channels.generic.websocket import WebsocketConsumer
 from django.template.loader import render_to_string
 from django.contrib.sessions.backends.base import SessionBase
@@ -10,11 +12,19 @@ from .models import *
 
 class LobbyConsumer(WebsocketConsumer):
     disconnect_timers: dict[str, threading.Timer] = {}
+    active_timers = {}
+
+    def remove_player_disconnection_timer(self):
+        timer_key = f"{self.lobby_code}_{self.player.id}"
+        if timer_key in self.disconnect_timers:
+            self.disconnect_timers[timer_key].cancel()
+            del self.disconnect_timers[timer_key]
 
     def connect(self):
         self.user: User = self.scope["user"]
         self.session: SessionBase = self.scope.get("session", {})
         self.lobby_code: str = self.scope["url_route"]["kwargs"]["lobby_code"]
+
         self.lobby = LobbyGroup.objects.filter(code=self.lobby_code).first()
         self.lobby_player_membership: LobbyPlayer = None
 
@@ -33,15 +43,16 @@ class LobbyConsumer(WebsocketConsumer):
                 if guest_player_id
                 else None
             )
+
         if not self.player:
             self.player = Player.objects.create(nickname="guest")
             self.session["guest_player_id"] = self.player.id
             self.session.save()
 
-        timer_key = f"{self.lobby_code}_{self.player.id}"
-        if timer_key in self.disconnect_timers:
-            self.disconnect_timers[timer_key].cancel()
-            del self.disconnect_timers[timer_key]
+        self.accept()
+        async_to_sync(self.channel_layer.group_add)(self.lobby_code, self.channel_name)
+
+        self.remove_player_disconnection_timer()
 
         current_player_count = self.lobby.lobby_memberships.count()
         self.lobby_player_membership = LobbyPlayer.objects.filter(
@@ -50,7 +61,6 @@ class LobbyConsumer(WebsocketConsumer):
 
         if not self.lobby_player_membership:
             if current_player_count >= 3:
-                self.accept()
                 self.send_error_message("This lobby is already full (max 3 players).")
                 self.close()
                 return
@@ -60,13 +70,24 @@ class LobbyConsumer(WebsocketConsumer):
                 lobby=self.lobby, player=self.player
             )
 
-        self.accept()
-        async_to_sync(self.channel_layer.group_add)(self.lobby_code, self.channel_name)
+        # If the match is already active, fetch state and render game board ONLY to this reconnecting user
+        if self.lobby.status == LobbyGroup.LobbyStatus.PLAYING:
+            self.game, _ = Game.objects.get_or_create(lobby=self.lobby)
+            self.current_round = (
+                GameRound.objects.filter(game=self.game)
+                .order_by("-round_number")
+                .first()
+            )
 
-        self.group_send_player_list()
+            context = WordFormContext(self.lobby, self.current_round)
+            html = render_to_string(
+                "fulabra_app/partials/game_board.html", {"context": context}
+            )
+            self.send(text_data=html)
+        else:
+            self.group_send_player_list()
 
     def disconnect(self, code):
-
         async_to_sync(self.channel_layer.group_discard)(
             self.lobby_code, self.channel_name
         )
@@ -87,19 +108,63 @@ class LobbyConsumer(WebsocketConsumer):
 
         data = json.loads(text_data)
         if data.get("action") == "start_game":
-            self.lobby.refresh_from_db()
-            if (
-                self.lobby.lobby_memberships.count() == 3
-                and self.lobby.leader == self.player
-            ):
-                self.lobby.status = LobbyGroup.LobbyStatus.PLAYING
-                self.lobby.save()
+            self.start_game()
 
-                context = {"lobby": self.lobby}
-                html = render_to_string(
-                    "fulabra_app/partials/game_board.html", {"context": context}
-                )
-                self.group_send_html(html)
+        elif data.get("action") == "submit_word":
+            self.submit_word()
+
+    def start_game(self):
+        self.lobby.refresh_from_db()
+        members_count = self.lobby.lobby_memberships.count()
+
+        if members_count != 3 or self.lobby.leader != self.player:
+            return
+
+        self.lobby.status = LobbyGroup.LobbyStatus.PLAYING
+        self.lobby.save()
+
+        # Initialize game and round structures
+        game, _ = Game.objects.get_or_create(lobby=self.lobby)
+        self.current_round = GameRound.objects.create(game=game, round_number=1)
+
+        # Broadcast the core game UI layout structure first
+        context = WordFormContext(self.lobby, self.current_round)
+        html = render_to_string(
+            "fulabra_app/partials/game_board.html", {"context": context}
+        )
+        self.group_send_html(html)
+
+        if self.lobby_code not in self.active_timers:
+            timer_thread = threading.Thread(
+                target=self.run_countdown_timer, args=(self.lobby_code, 30), daemon=True
+            )
+            self.active_timers[self.lobby_code] = timer_thread
+            timer_thread.start()
+
+    def submit_word(self):
+        pass
+
+    def run_countdown_timer(self, room_code, duration):
+        """Asynchronous worker that decrements time and pushes updates to clients"""
+        for time_remaining in range(duration, -1, -1):
+            html = render_to_string(
+                "fulabra_app/partials/round_countdown.html",
+                {"seconds": time_remaining},
+            )
+
+            self.group_send_html(html)
+
+            time.sleep(1)
+
+        game = Game.objects.get(
+            lobby=LobbyGroup.objects.filter(code=room_code).first()
+        )
+        current_round = game.rounds.filter().last()
+        if current_round:
+            self.evaluate_round_results(current_round)
+
+        if room_code in self.active_timers:
+            del self.active_timers[room_code]
 
     def group_send_html(self, html):
         async_to_sync(self.channel_layer.group_send)(

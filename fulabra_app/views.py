@@ -119,7 +119,6 @@ def lobby_room_view(request: HttpRequest, lobby_code: str):
         return render(request, "fulabra_app/index.html", {"context": context})
 
     user: User = request.user
-
     if user.is_authenticated:
         player = user.player
     else:
@@ -130,9 +129,7 @@ def lobby_room_view(request: HttpRequest, lobby_code: str):
 
     is_player_in_lobby = lobby.lobby_memberships.filter(player=player).exists()
 
-    if lobby.status == LobbyGroup.LobbyStatus.PLAYING:
-        if is_player_in_lobby:
-            return render(request, "fulabra_app/game_board")
+    if lobby.status == LobbyGroup.LobbyStatus.PLAYING and not is_player_in_lobby:
         return render(
             request,
             "fulabra_app/index.html",

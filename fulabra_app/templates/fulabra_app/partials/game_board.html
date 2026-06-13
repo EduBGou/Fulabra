@@ -1,6 +1,26 @@
+{% load static %}
 <div id="game-container" hx-swap-oob="innerHTML">
   <h1>The Match Has Begun!</h1>
   <p>Lobby Room: {{ context.lobby.code }}</p>
-</div>
+  <span class="badge bg-warning text-dark mb-2">Round {{ context.round.round_number }}</span>
 
+  <div class="game-form-wrapper position-relative overflow-visible">
+    <form ws-send autocomplete="off" class="m-0">
+      <input type="hidden" name="action" value="submit_word" />
+
+      <div class="position-relative overflow-visible">
+        <div class="input-group">
+          <input type="text" name="word" id="word-input" class="form-control form-control-lg fw-semibold" list="word-list" placeholder="Type to search..." required />
+          <button type="submit" class="btn btn-primary px-4 fw-bold">Confirm</button>
+        </div>
+      </div>
+    </form>
+  </div>
+  <datalist id="word-list" class="custom-dropdown shadow rounded-3 d-none">
+    {% for word in context.available_words %}
+      <option class="dropdown-item-row px-3 py-2 text-start transition-all">{{ word.label }}</option>
+    {% endfor %}
+  </datalist>
+  <div id="round-countdown">asd</div>
+</div>
 <div id="online-friends-div" hx-swap-oob="true"></div>

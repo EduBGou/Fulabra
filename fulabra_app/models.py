@@ -96,6 +96,7 @@ class LobbyGroup(models.Model):
 
     def generate_unique_code(self) -> str:
         """Helper method to generate a unique lobby code"""
+        return "AAAAAA"
         while True:
             new_code = "".join(choices(CHARACTERS, k=LOBBY_CODE_LENGTH))
             if not LobbyGroup.objects.filter(code=new_code).exists():
