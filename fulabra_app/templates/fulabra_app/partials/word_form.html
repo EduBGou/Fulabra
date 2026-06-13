@@ -1,15 +1,15 @@
-<form id="word-form" ws-send autocomplete="off" class="m-0" hx-swap-oob="innerHTML">
-  <div class="position-relative overflow-visible">
-    <div class="input-group">
-      {% if submitted %}
-        <input type="hidden" name="action" value="cancel_submit" />
-        <input type="text" name="word" id="word-input" class="form-control form-control-lg fw-semibold" list="word-list" placeholder="{{submitted_word_label}}" disabled/>
-        <button type="submit" class="btn btn-danger px-4 fw-bold">Cancel</button>
-      {% else %}
-        <input type="hidden" name="action" value="submit_word" />
-        <input type="text" name="word" id="word-input" class="form-control form-control-lg fw-semibold" list="word-list" placeholder="Type to search..." value="{{submitted_word_label}}"/>
-        <button type="submit" class="btn btn-primary px-4 fw-bold">Confirm</button>
-      {% endif %}
-    </div>
+{% load static %}
+<form id="word-form" ws-send autocomplete="off" class="form-row" hx-swap-oob="innerHTML">
+  <div class="word-row">
+    {{ context.form.action }}
+    {{ context.form.word }}
+    {% if context.submitted %}
+      <button type="submit" class="btn btn-lg btn-danger px-4 fw-bold">CANCEL</button>
+    {% else %}
+      <button type="submit" class="btn btn-lg btn-success px-4 fw-bold">Confirm</button>
+    {% endif %}
   </div>
+  {% if context.form.word.errors %}
+    <div class="alert alert-danger p-2 small mb-2 col">{{ context.form.word.errors.0 }}</div>
+  {% endif %}
 </form>

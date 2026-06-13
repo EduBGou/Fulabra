@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 from typing import List
+
+from fulabra_app.forms import GameWordForm
 from .models import GameRound, LobbyGroup, LobbyPlayer, Player, User, Word
 
 @dataclass
@@ -54,9 +56,10 @@ class LobbyContext:
 
 
 @dataclass
-class WordFormContext:
+class GameFrameContext:
     lobby: LobbyGroup
     round: GameRound
+    form: GameWordForm
 
     @property
     def available_words(self) -> List[Word]:

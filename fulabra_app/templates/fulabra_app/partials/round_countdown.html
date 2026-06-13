@@ -1,8 +1,11 @@
-<div id="round-countdown" hx-swap-oob="innerHTML" class="fs-1 fw-extrabold text-danger animate-pulse" data-seconds="{{ seconds }}">
+<div id="round-countdown" hx-swap-oob="true" class="fs-1 fw-extrabold text-danger col" data-seconds="{{ seconds }}">
   {{ seconds }}s{% if seconds == 0 %}
     <script>
       ;(function () {
         const wordForm = document.querySelector('form[ws-send]')
+        wordForm.addEventListener('submit', (e) => {
+          e.preventDefault()
+        })
         if (wordForm) {
           wordForm.submit()
         }
