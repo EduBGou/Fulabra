@@ -297,3 +297,9 @@ def add_friend_view(request: HttpRequest, player_id: int):
         '<i class="bi bi-clock-history me-2"></i> Request Pending'
         '</button>' 
     )
+
+def notification_count(request: HttpRequest):
+    if request.user.is_authenticated:
+        count = request.user.notifications.filter(is_read=False).count()
+        return {"unread_notifications_count": count}
+    return {"unread_notifications_count": 0}
