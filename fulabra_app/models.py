@@ -178,9 +178,15 @@ class Game(models.Model):
     def game_memberships(self) -> QuerySet[GamePlayer]:
         return getattr(self, Game.game_memberships.__name__).all()
 
+    @property
+    def rounds(self) -> QuerySet[GameRound]:
+        return getattr(self, Game.rounds.__name__).all()
+
 
 class GameRound(models.Model):
-    game = models.ForeignKey(Game, on_delete=models.CASCADE)
+    game = models.ForeignKey(
+        Game, related_name=Game.rounds.__name__, on_delete=models.CASCADE
+    )
     round_number = models.IntegerField()
 
     @property

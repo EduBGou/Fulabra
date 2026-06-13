@@ -4,23 +4,13 @@
   <p>Lobby Room: {{ context.lobby.code }}</p>
   <span class="badge bg-warning text-dark mb-2">Round {{ context.round.round_number }}</span>
 
-  <div class="game-form-wrapper position-relative overflow-visible">
-    <form ws-send autocomplete="off" class="m-0">
-      <input type="hidden" name="action" value="submit_word" />
+  {% include 'fulabra_app/partials/word_form.html' %}
 
-      <div class="position-relative overflow-visible">
-        <div class="input-group">
-          <input type="text" name="word" id="word-input" class="form-control form-control-lg fw-semibold" list="word-list" placeholder="Type to search..." required />
-          <button type="submit" class="btn btn-primary px-4 fw-bold">Confirm</button>
-        </div>
-      </div>
-    </form>
-  </div>
   <datalist id="word-list" class="custom-dropdown shadow rounded-3 d-none">
     {% for word in context.available_words %}
       <option class="dropdown-item-row px-3 py-2 text-start transition-all">{{ word.label }}</option>
     {% endfor %}
   </datalist>
-  <div id="round-countdown">asd</div>
+  <div id="round-countdown"></div>
 </div>
-<div id="online-friends-div" hx-swap-oob="true"></div>
+<div id="online-friends-div" hx-swapoob="true"></div>

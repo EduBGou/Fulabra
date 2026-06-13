@@ -1,1 +1,12 @@
-<div id="round-countdown" hx-swap-oob="innerHTML" class="fs-1 fw-extrabold text-danger animate-pulse">{{ seconds }}s</div>
+<div id="round-countdown" hx-swap-oob="innerHTML" class="fs-1 fw-extrabold text-danger animate-pulse" data-seconds="{{ seconds }}">
+  {{ seconds }}s{% if seconds == 0 %}
+    <script>
+      ;(function () {
+        const wordForm = document.querySelector('form[ws-send]')
+        if (wordForm) {
+          wordForm.submit()
+        }
+      })()
+    </script>
+  {% endif %}
+</div>

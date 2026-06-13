@@ -111,7 +111,10 @@ class LobbyConsumer(WebsocketConsumer):
             self.start_game()
 
         elif data.get("action") == "submit_word":
-            self.submit_word()
+            self.submit_word(data.get("word"))
+
+        elif data.get("action") == "cancel_submit":
+            self.cancel_submit()
 
     def start_game(self):
         self.lobby.refresh_from_db()
@@ -141,10 +144,54 @@ class LobbyConsumer(WebsocketConsumer):
             self.active_timers[self.lobby_code] = timer_thread
             timer_thread.start()
 
-    def submit_word(self):
-        pass
+    def submit_word(self, word_label):
+        self.game = Game.objects.get(
+            lobby=LobbyGroup.objects.filter(code=self.lobby_code).first()
+        )
 
-    def run_countdown_timer(self, room_code, duration):
+        self.current_round = self.game.rounds.filter().last()
+        word = Word.objects.filter(label=word_label).first()
+
+        if word:
+            SubmittedWord.objects.create(
+                round=self.current_round, player=self.player, word=word
+            )
+
+        submitted = word is not None
+        word_label = word.label if submitted else "Type to search..."
+
+        html = render_to_string(
+            "fulabra_app/partials/word_form.html",
+            {
+                "submitted": submitted,
+                "submitted_word_label": word_label,
+            },
+        )
+
+        self.send(text_data=html)
+
+    def cancel_submit(self):
+        submitted_word = SubmittedWord.objects.filter(
+            round=self.current_round, player=self.player
+        ).first()
+
+        if submitted_word:
+            word_label = submitted_word.word.label
+            submitted_word.delete()
+        else:
+            word_label = "Type to search..."
+
+        html = render_to_string(
+            "fulabra_app/partials/word_form.html",
+            {
+                "submitted": False,
+                "submitted_word_label": word_label,
+            },
+        )
+
+        self.send(text_data=html)
+
+    def run_countdown_timer(self, lobby_code, duration):
         """Asynchronous worker that decrements time and pushes updates to clients"""
         for time_remaining in range(duration, -1, -1):
             html = render_to_string(
@@ -156,15 +203,20 @@ class LobbyConsumer(WebsocketConsumer):
 
             time.sleep(1)
 
-        game = Game.objects.get(
-            lobby=LobbyGroup.objects.filter(code=room_code).first()
-        )
-        current_round = game.rounds.filter().last()
-        if current_round:
-            self.evaluate_round_results(current_round)
+        self.game = Game.objects.filter(
+            lobby=LobbyGroup.objects.filter(code=lobby_code).first()
+        ).first()
 
-        if room_code in self.active_timers:
-            del self.active_timers[room_code]
+        self.current_round = self.game.rounds.filter().last()
+
+        if self.current_round:
+            self.evaluate_round_results(self.current_round)
+
+        if lobby_code in self.active_timers:
+            del self.active_timers[lobby_code]
+
+    def evaluate_round_results(current_round):
+        pass
 
     def group_send_html(self, html):
         async_to_sync(self.channel_layer.group_send)(
