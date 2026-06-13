@@ -18,4 +18,7 @@ urlpatterns = [
     path("lobby/<str:lobby_code>/", views.lobby_room_view, name="lobby_room"),
     path("profile/<str:username>/", views.profile_view, name="profile"),
     path("profile/edit", views.edit_profile_view, name="edit_profile"),
+    path("inbox/", views.inbox_view, name="inbox"),
+    path("inbox/action/<int:notification_id>/", views.notification_action_view, name="notification_action"),
+    path("profile/add_friend/<int:player_id>/", views.add_friend_view, name="add_friend"),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

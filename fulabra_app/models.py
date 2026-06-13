@@ -167,3 +167,43 @@ class FriendRequest(models.Model):
         return (
             f"De {self.from_user.username} para {self.to_user.username} ({self.status})"
         )
+
+
+class Notification(models.Model):
+    TYPE_CHOICES = (
+        ("friend_request", "Pedido de Amizade"),
+        ("game_invite", "Convite para Jogar"),
+    )
+
+    recipient = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="notifications"
+    )
+    
+    sender = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="sent_notifications"
+    )
+
+    notification_type = models.CharField(max_length=20, choices=TYPE_CHOICES)
+    is_read = models.BooleanField(default=False)
+
+    target_id = models.IntegerField()
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Para {self.recipient.username} - {self.notification_type} ({"Lida" if self.is_read else "Pendente"})"
+
+
+@receiver(post_save, sender=FriendRequest)
+def generic_friend_request_notification(sender, instance, created, **kwargs):
+    if created and instance.status == "pending":
+        Notification.objects.create(
+            recipient=instance.to_user,
+            sender=instance.from_user,
+            notification_type="friend_request",
+            target_id=instance.id
+        )

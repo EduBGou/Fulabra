@@ -1,6 +1,6 @@
-from django.shortcuts import redirect, render
+from django.shortcuts import redirect, render, get_object_or_404
 from django.contrib.auth import login, logout
-from django.http import HttpRequest
+from django.http import HttpRequest, HttpResponse
 from django.urls import reverse
 from django.db.models import Q
 from .forms import GuestForm, LoginForm, UserRegistrationForm, EditPlayerForm
@@ -194,16 +194,19 @@ def register_view(request: HttpRequest):
 
 def profile_view(request: HttpRequest, username: str):
     user = User.objects.filter(username=username).first()
+    if not user:
+        return redirect("index")
+    
     user_player = user.player
     logged_user: User = request.user
-    is_owner = logged_user.player == user_player
+    is_owner = logged_user == user
 
     friend_status = None
 
     if not is_owner and logged_user.is_authenticated:
         friend_request = FriendRequest.objects.filter(
-            Q(from_user=logged_user, to_user=user_player)
-            | Q(from_user=user_player, to_user=logged_user)
+            Q(from_user=logged_user, to_user=user)
+            | Q(from_user=user, to_user=logged_user)
         ).first()
 
         if friend_request:
@@ -239,3 +242,58 @@ def edit_profile_view(request: HttpRequest):
         form = EditPlayerForm(instance=user_player)
 
     return render(request, "fulabra_app/edit_profile.html", {"form": form})
+
+
+def inbox_view(request: HttpRequest):
+    if not request.user.is_authenticated:
+        return redirect("login")
+    
+    notifications = request.user.notifications.filter(is_read=False).order_by("-created_at") 
+
+    return render(request, "fulabra_app/inbox.html", {"notifications": notifications})
+
+
+def notification_action_view(request: HttpRequest, notification_id: int):
+    if request.method == "POST":
+        notification = get_object_or_404(Notification, id=notification_id, recipient=request.user)
+        action = request.POST.get("action")
+
+        if notification.notification_type == "friend_request":
+            friend_request = FriendRequest.objects.filter(id=notification.target_id).first()
+            if friend_request:
+                if action == "accept":
+                    friend_request.status = "accepted"
+                    request.user.friends.add(friend_request.from_user)
+                    friend_request.from_user.friends.add(request.user)
+                elif action == "reject":
+                    friend_request.status = "rejected"
+                friend_request.save()
+        
+        notification.is_read = True
+        notification.save()
+
+        return HttpResponse("")
+    return HttpResponse("Invalid Request", status=400)
+
+
+def add_friend_view(request: HttpRequest, player_id: int):
+    if not request.user.is_authenticated:
+        return HttpResponse("Unauthorized", status=401)
+    
+    to_player = get_object_or_404(Player, id=player_id)
+
+    to_user = to_player.user
+    from_user = request.user
+
+    # Para não criar pedidos duplicados
+    friend_request, created = FriendRequest.objects.get_or_create(
+        from_user=from_user,
+        to_user=to_user,
+        defaults={"status": "pending"}
+    )
+
+    return HttpResponse(
+        '<button class="btn btn-secondary rounded-pill px-4 fw-bold shadow-sm" disabled>'
+        '<i class="bi bi-clock-history me-2"></i> Request Pending'
+        '</button>' 
+    )
