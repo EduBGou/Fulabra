@@ -1,4 +1,3 @@
-import asyncio
 import threading
 import time
 from channels.generic.websocket import WebsocketConsumer
@@ -72,7 +71,6 @@ class LobbyConsumer(WebsocketConsumer):
                 lobby=self.lobby, player=self.player
             )
 
-        # If the match is already active, fetch state and render game board ONLY to this reconnecting user
         if self.lobby.status == LobbyGroup.LobbyStatus.PLAYING:
             self.game, _ = Game.objects.get_or_create(lobby=self.lobby)
             self.current_round = (
@@ -81,11 +79,21 @@ class LobbyConsumer(WebsocketConsumer):
                 .first()
             )
 
-            context = GameFrameContext(self.lobby, self.current_round, GameWordForm())
-            html = render_to_string(
-                "fulabra_app/partials/game_frame.html", {"context": context}
-            )
-            self.send(text_data=html)
+            if self.game.status == Game.GameStatus.RESULT:
+                html = render_to_string(
+                    "fulabra_app/partials/round_result.html",
+                    {"context": RoundResultContext(self.get_submissions())},
+                )
+                self.send(text_data=html)
+
+            else:
+                context = GameFrameContext(
+                    self.lobby, self.current_round, GameWordForm()
+                )
+                html = render_to_string(
+                    "fulabra_app/partials/game_frame.html", {"context": context}
+                )
+                self.send(text_data=html)
         else:
             self.group_send_player_list()
 
@@ -109,7 +117,6 @@ class LobbyConsumer(WebsocketConsumer):
         import json
 
         data = json.loads(text_data)
-        print(f"{self.player.nickname} -> action: {data.get("action")}")
 
         if data.get("action") == "start_game":
             self.start_game()
@@ -130,8 +137,12 @@ class LobbyConsumer(WebsocketConsumer):
         self.lobby.status = LobbyGroup.LobbyStatus.PLAYING
         self.lobby.save()
 
-        game, _ = Game.objects.get_or_create(lobby=self.lobby)
-        self.current_round = GameRound.objects.create(game=game, round_number=1)
+        self.game, _ = Game.objects.get_or_create(lobby=self.lobby)
+        self.current_round = GameRound.objects.create(game=self.game, round_number=1)
+
+        # Change to Game.GameStatus.START
+        self.game.status = Game.GameStatus.CHOOSING
+        self.game.save()
 
         context = GameFrameContext(self.lobby, self.current_round, GameWordForm())
         html = render_to_string(
@@ -157,13 +168,19 @@ class LobbyConsumer(WebsocketConsumer):
             self.current_round = self.game.rounds.last()
 
             print(f"{self.player.nickname} -> submit: {word_obj.label}")
-            SubmittedWord.objects.create(
+            if not SubmittedWord.objects.filter(
                 round=self.current_round, player=self.player, word=word_obj
-            )
+            ).first():
+                SubmittedWord.objects.create(
+                    round=self.current_round, player=self.player, word=word_obj
+                )
 
             form.fields["word"].widget.attrs["readonly"] = "readonly"
             form.data["word"] = word_obj.label
             form.data["action"] = "cancel_submit"
+
+        if self.current_round.submitted_words.count() >= 3:
+            self.end_round()
 
         html = render_to_string(
             "fulabra_app/partials/word_form.html",
@@ -197,23 +214,60 @@ class LobbyConsumer(WebsocketConsumer):
     def run_countdown_timer(self, lobby_code, duration):
         """Asynchronous worker that decrements time and pushes updates to clients"""
         for time_remaining in range(duration, -1, -1):
+            if lobby_code not in self.active_timers:
+                return
             html = render_to_string(
                 "fulabra_app/partials/round_countdown.html",
                 {"seconds": time_remaining},
             )
-
             self.group_send_html(html)
-
             time.sleep(1)
 
-        self.game = Game.objects.filter(
-            lobby=LobbyGroup.objects.filter(code=lobby_code).first()
-        ).first()
+        time.sleep(1.5)
+        self.end_round()
 
-        self.current_round = self.game.rounds.filter().last()
+    def end_round(self):
 
-        if lobby_code in self.active_timers:
-            del self.active_timers[lobby_code]
+        if self.lobby_code in self.active_timers:
+            del self.active_timers[self.lobby_code]
+
+        if self.game.status != Game.GameStatus.CHOOSING:
+            return
+
+        self.game.refresh_from_db()
+        self.game.status = Game.GameStatus.RESULT
+        self.game.save()
+
+        self.current_round = self.game.rounds.last()
+        submissions = self.get_submissions()
+
+        words = [sub.word for sub in submissions if sub.word]
+        word_frequencies: dict[Word, int] = {}
+
+        for w in words:
+            if w in word_frequencies.keys():
+                word_frequencies[w] += 1
+            else:
+                word_frequencies[w] = 1
+
+        for sub in submissions:
+            game_player, _ = GamePlayer.objects.get_or_create(
+                game=self.game, player=sub.player
+            )
+
+            if word_frequencies[sub.word] == 2:
+                game_player.score += 1
+                game_player.save()
+
+            if word_frequencies[sub.word] == 3 and game_player.score > 0:
+                game_player.score -= 1
+                game_player.save()
+
+        html = render_to_string(
+            "fulabra_app/partials/round_result.html",
+            {"context": RoundResultContext(submissions)},
+        )
+        self.group_send_html(html)
 
     def group_send_html(self, html):
         async_to_sync(self.channel_layer.group_send)(
@@ -223,6 +277,9 @@ class LobbyConsumer(WebsocketConsumer):
 
     def send_html_event(self, event):
         self.send(text_data=event["html"])
+
+    def get_submissions(self) -> QuerySet[SubmittedWord]:
+        return self.current_round.submitted_words.select_related("word", "player").all()
 
     def group_send_player_list(self):
         async_to_sync(self.channel_layer.group_send)(

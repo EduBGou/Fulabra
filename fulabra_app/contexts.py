@@ -2,7 +2,16 @@ from dataclasses import dataclass
 from typing import List
 
 from fulabra_app.forms import GameWordForm
-from .models import GameRound, LobbyGroup, LobbyPlayer, Player, User, Word
+from .models import (
+    GamePlayer,
+    GameRound,
+    LobbyGroup,
+    LobbyPlayer,
+    Player,
+    SubmittedWord,
+    User,
+    Word,
+)
 
 @dataclass
 class RegisterContext:
@@ -64,3 +73,32 @@ class GameFrameContext:
     @property
     def available_words(self) -> List[Word]:
         return Word.objects.all()
+
+
+@dataclass
+class RoundResultContext:
+    submissions: SubmittedWord
+
+    @property
+    def round_result_list(self) -> List[RoundResultElement]:
+        list: List[RoundResultElement] = []
+
+        for sub in self.submissions:
+            game_player = GamePlayer.objects.filter(
+                game=sub.round.game, player=sub.player
+            ).first()
+            if game_player:
+                list.append(RoundResultElement(sub.player, sub.word, game_player.score))
+            else:
+                print(
+                    f"GamePlayer with player={sub.player.nickname} and game.id={sub.round.game.id} there is not exits!"
+                )
+
+        return list
+
+
+@dataclass
+class RoundResultElement:
+    player: Player
+    word: Word
+    score: int

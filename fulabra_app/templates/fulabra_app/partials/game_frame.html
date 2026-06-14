@@ -5,11 +5,11 @@
   <span class="badge bg-warning text-dark mb-2">Round {{ context.round.round_number }}</span>
   {% include 'fulabra_app/partials/word_form.html' %}
   <div id="round-countdown"></div>
-  
+
   <datalist id="word-list" class="custom-dropdown shadow rounded-3 d-none">
     {% for word in context.available_words %}
-    <option class="dropdown-item-row px-3 py-2 text-start transition-all">{{ word.label }}</option>
+      <option class="dropdown-item-row px-3 py-2 text-start transition-all">{{ word.label }}</option>
     {% endfor %}
   </datalist>
 </div>
-<div id="online-friends-div" hx-swapoob="true"></div>
+<div id="online-friends-div" hx-swap-oob="true"></div>

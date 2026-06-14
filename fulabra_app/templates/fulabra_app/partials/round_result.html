@@ -1,0 +1,5 @@
+<div id="game-container" hx-swap-oob="innerHTML">
+  {% for res in context.round_result_list %}
+    <div>{{res.player.nickname}} sent {{res.word.label}}, current pnts: {{res.score}}</div>
+  {% endfor %}
+</div>

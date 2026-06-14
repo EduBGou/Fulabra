@@ -3,11 +3,10 @@
     <script>
       ;(function () {
         const wordForm = document.querySelector('form[ws-send]')
-        wordForm.addEventListener('submit', (e) => {
-          e.preventDefault()
-        })
         if (wordForm) {
-          wordForm.submit()
+          if (wordForm.dataset.submitted === 'False') {
+            wordForm.requestSubmit()
+          }
         }
       })()
     </script>

@@ -218,4 +218,4 @@ class GamePlayer(models.Model):
     player = models.OneToOneField(
         Player, related_name=Player.game_membership.__name__, on_delete=models.CASCADE
     )
-    score = models.IntegerField()
+    score = models.IntegerField(default=0)
