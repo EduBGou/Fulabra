@@ -272,6 +272,18 @@ def notification_action_view(request: HttpRequest, notification_id: int):
         notification.is_read = True
         notification.save()
 
+        # Se o inbox zerou as notificações
+        unread_count = request.user.notifications.filter(is_read=False).count()
+        if unread_count == 0:
+            empty_state_html = '''
+            <div id="empty-inbox-msg" class="text-center py-5 text-muted">
+                <i class="bi bi-envelope-open display-1 mb-3 d-block"></i>
+                <p class="fs-5 m-0">Your inbox is empty.</p>
+                <p class="small">You're all caught up!</p>
+            </div>
+            '''
+            return HttpResponse(empty_state_html)
+
         return HttpResponse("")
     return HttpResponse("Invalid Request", status=400)
 
@@ -297,6 +309,7 @@ def add_friend_view(request: HttpRequest, player_id: int):
         '<i class="bi bi-clock-history me-2"></i> Request Pending'
         '</button>' 
     )
+
 
 def notification_count(request: HttpRequest):
     if request.user.is_authenticated:

@@ -1,7 +1,10 @@
 from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
 
-from fulabra_app.models import LobbyGroup, Player, User, LobbyPlayer
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
+
+from .models import *
 
 @receiver(post_save, sender=User)
 def create_user(sender, instance: User, created, **kwargs):
@@ -20,3 +23,30 @@ def delete_guest_player_on_lobby_leave(sender, instance: LobbyPlayer, **kwargs):
     player = instance.player
     if not player.user:
         player.delete()
+
+
+@receiver(post_save, sender=FriendRequest)
+def generic_friend_request_notification(sender, instance, created, **kwargs):
+    if created and instance.status == "pending":
+        Notification.objects.create(
+            recipient=instance.to_user,
+            sender=instance.from_user,
+            notification_type="friend_request",
+            target_id=instance.id
+        )
+
+
+@receiver(post_save, sender=Notification)
+def trigger_notification_websocket(sender, instance: Notification, created, **kwargs):
+    channel_layer = get_channel_layer()
+    group_name = f"notifications_{instance.recipient.username}"
+
+    message = {
+        "type": "send_notification_update",
+        "is_read": instance.is_read
+    }
+
+    if created:
+        message["notification_id"] = instance.id
+
+    async_to_sync(channel_layer.group_send)(group_name, message)

@@ -5,10 +5,6 @@ from django.db.models import QuerySet
 from django.db.models.signals import post_save, pre_save
 from django.contrib.auth.models import AbstractUser
 from django.utils.translation import gettext_lazy as _
-from django.dispatch import receiver
-
-from channels.layers import get_channel_layer
-from asgiref.sync import async_to_sync
 
 from fulabra import settings
 
@@ -199,28 +195,3 @@ class Notification(models.Model):
 
     def __str__(self):
         return f"Para {self.recipient.username} - {self.notification_type} ({"Lida" if self.is_read else "Pendente"})"
-
-
-@receiver(post_save, sender=FriendRequest)
-def generic_friend_request_notification(sender, instance, created, **kwargs):
-    if created and instance.status == "pending":
-        Notification.objects.create(
-            recipient=instance.to_user,
-            sender=instance.from_user,
-            notification_type="friend_request",
-            target_id=instance.id
-        )
-
-@receiver(post_save, sender=Notification)
-def trigger_notification_websocket(sender, instance: Notification, created, **kwargs):
-    if created:
-        channel_layer = get_channel_layer()
-        group_name = f"notifications_{instance.recipient.username}"
-
-        async_to_sync(channel_layer.group_send)(
-            group_name,
-            {
-                "type": "send_notification_update",
-                "notification_id": instance.id
-            }
-        )
