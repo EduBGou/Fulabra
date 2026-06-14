@@ -18,7 +18,7 @@
     <script src="https://unpkg.com/htmx.org/dist/ext/ws.js"></script>
 
   </head>
-  <body>
+  <body {% if user.is_authenticated %} hx-ext="ws" ws-connect="/ws/notifications/" {% endif %}>
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
       <a class="navbar-brand" href="{% url 'index' %}">Fulabra</a>
 
@@ -35,12 +35,15 @@
               <a class="nav-link position-relative p-1 d-inline-block" href="{% url 'inbox' %}" title="Inbox" style="position: relative;">
                 <i class="bi bi-bell-fill text-dark" style="font-size: 1.2rem;"></i>
                 
-                {% if unread_notifications_count > 0 %}
-                  <span class="badge badge-danger rounded-pill position-absolute" 
-                        style="position: absolute; top: -2px; right: -5px; font-size: 0.65rem; padding: 0.25em 0.45em;">
-                    {{ unread_notifications_count }}
-                  </span>
-                {% endif %}
+                <div id="nav-notification-badge-wrapper">
+                  {% if unread_notifications_count > 0 %}
+                    <span class="badge badge-danger rounded-pill position-absolute" 
+                          style="position: absolute; top: -2px; right: -5px; font-size: 0.65rem; padding: 0.25em 0.45em;">
+                      {{ unread_notifications_count }}
+                    </span>
+                  {% endif %}
+                </div>
+
               </a>
             </li>
 

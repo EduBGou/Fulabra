@@ -1,0 +1,27 @@
+<div id="inbox-list" hx-swap-oob="afterbegin">
+  <div class="card border-0 shadow-sm rounded-4 p-3 animate__animated animate__fadeIn" id="notification-{{ note.id }}">
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <span class="badge bg-secondary mb-1 rounded-pill small">{{ note.get_notification_type_display }}</span>
+        <p class="mb-0 fw-medium">
+          {% if note.notification_type == 'friend_request' %}
+            <span class="text-primary fw-bold">{{ note.sender.username }}</span> sent you a friend request!
+          {% endif %}
+        </p>
+      </div>
+
+      <div class="d-flex gap-2">
+        <form hx-post="{% url 'notification_action' note.id %}" hx-target="#notification-{{ note.id }}" hx-swap="outerHTML">
+          <input type="hidden" name="action" value="accept">
+          <button type="submit" class="btn btn-sm btn-success rounded-pill px-3 fw-bold">Accept</button>
+        </form>
+        <form hx-post="{% url 'notification_action' note.id %}" hx-target="#notification-{{ note.id }}" hx-swap="outerHTML">
+          <input type="hidden" name="action" value="reject">
+          <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-bold">Decline</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="empty-inbox-msg" hx-swap-oob="delete"></div>

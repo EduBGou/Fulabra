@@ -7,6 +7,9 @@ from django.contrib.auth.models import AbstractUser
 from django.utils.translation import gettext_lazy as _
 from django.dispatch import receiver
 
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
+
 from fulabra import settings
 
 CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
@@ -206,4 +209,18 @@ def generic_friend_request_notification(sender, instance, created, **kwargs):
             sender=instance.from_user,
             notification_type="friend_request",
             target_id=instance.id
+        )
+
+@receiver(post_save, sender=Notification)
+def trigger_notification_websocket(sender, instance: Notification, created, **kwargs):
+    if created:
+        channel_layer = get_channel_layer()
+        group_name = f"notifications_{instance.recipient.username}"
+
+        async_to_sync(channel_layer.group_send)(
+            group_name,
+            {
+                "type": "send_notification_update",
+                "notification_id": instance.id
+            }
         )

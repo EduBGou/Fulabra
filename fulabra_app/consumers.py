@@ -1,4 +1,5 @@
 import threading
+import json
 from channels.generic.websocket import WebsocketConsumer
 from django.template.loader import render_to_string
 from django.contrib.sessions.backends.base import SessionBase
@@ -195,4 +196,43 @@ class LobbyConsumer(WebsocketConsumer):
         html = render_to_string(
             "fulabra_app/partials/error_message.html", {"context": context}
         )
+        self.send(text_data=html)
+
+
+class NotificationConsumer(WebsocketConsumer):
+    def connect(self):
+        self.user = self.scope["user"]
+
+        if self.user.is_authenticated:
+            self.group_name = f"notifications_{self.user.username}"
+
+            async_to_sync(self.channel_layer.group_add)(
+                self.group_name,
+                self.channel_name
+            )
+            self.accept()
+        else: 
+            self.close()
+
+    def disconnect(self, code):
+        if self.user.is_authenticated:
+            async_to_sync(self.channel_layer.group_discard)(
+                self.group_name,
+                self.channel_name
+            )
+    
+    def send_notification_update(self, event):
+        from .models import Notification
+        unread_count = Notification.objects.filter(recipient=self.user, is_read=False).count()
+
+        context = {"unread_notifications_count": unread_count}
+        html = render_to_string("fulabra_app/partials/notification_badge.html", context)
+
+        notification_id = event.get("notification_id")
+        if notification_id:
+            note = Notification.objects.filter(id=notification_id).first()
+            if note:
+                card_html = render_to_string("fulabra_app/partials/notification_card.html", {"note": note})
+                html += card_html
+                
         self.send(text_data=html)

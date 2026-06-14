@@ -6,7 +6,7 @@
     Inbox
   </h2>
 
-  <div class="d-flex flex-column gap-3">
+  <div id="inbox-list" class="d-flex flex-column gap-3">
     {% for note in notifications %}
       <div class="card border-0 shadow-sm rounded-4 p-3 animate__animated animate__fadeIn" id="notification-{{ note.id }}">
         <div class="d-flex justify-content-between align-items-center">
@@ -41,7 +41,7 @@
         </div>
       </div>
     {% empty %}
-      <div class="text-center py-5 text-muted">
+      <div id="empty-inbox-msg" class="text-center py-5 text-muted">
         <i class="bi bi-envelope-open display-1 mb-3 d-block"></i>
         <p class="fs-5 m-0">Your inbox is empty.</p>
         <p class="small">You're all caught up!</p>
