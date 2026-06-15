@@ -3,6 +3,7 @@ import json
 from channels.generic.websocket import WebsocketConsumer
 from django.template.loader import render_to_string
 from django.contrib.sessions.backends.base import SessionBase
+from django.core.cache import cache
 from asgiref.sync import async_to_sync
 from .contexts import *
 from .models import *
@@ -82,6 +83,9 @@ class LobbyConsumer(WebsocketConsumer):
             self.disconnect_timers[timer_key] = cleanup_timer
             cleanup_timer.start()
 
+        if self.user.is_authenticated:
+            cache.set(f"user_online_{self.user.id}", "online", timeout=600)
+
     def receive(self, text_data=None, bytes_data=None):
         import json
 
@@ -156,6 +160,10 @@ class LobbyConsumer(WebsocketConsumer):
         self.lobby.status = LobbyGroup.LobbyStatus.PLAYING
         self.lobby.save()
 
+        for member in self.lobby.memberships.all():
+            if member.player.user:
+                cache.set(f"user_online_{member.player.user.id}", "in_game", timeout=600)
+
         context = {"lobby": self.lobby}
         html = render_to_string(
             "fulabra_app/partials/game_board.html", {"context": context}
@@ -210,6 +218,9 @@ class NotificationConsumer(WebsocketConsumer):
                 self.group_name,
                 self.channel_name
             )
+
+            cache.set(f"user_online_{self.user.id}", "online", timeout=600)
+
             self.accept()
         else: 
             self.close()
@@ -220,6 +231,8 @@ class NotificationConsumer(WebsocketConsumer):
                 self.group_name,
                 self.channel_name
             )
+
+            cache.delete(f"user_online_{self.user.id}")
     
     def send_notification_update(self, event):
         from .models import Notification

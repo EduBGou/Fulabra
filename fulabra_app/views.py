@@ -3,6 +3,7 @@ from django.contrib.auth import login, logout
 from django.http import HttpRequest, HttpResponse
 from django.urls import reverse
 from django.db.models import Q
+from django.core.cache import cache
 from .forms import GuestForm, LoginForm, UserRegistrationForm, EditPlayerForm
 from .utils import hx_redirect, lobby_is_full, set_player_preset_avatar
 from .contexts import LobbyContext
@@ -298,7 +299,7 @@ def add_friend_view(request: HttpRequest, player_id: int):
     from_user = request.user
 
     # Para não criar pedidos duplicados
-    friend_request, created = FriendRequest.objects.get_or_create(
+    friend_request, created = FriendRequest.objects.update_or_create(
         from_user=from_user,
         to_user=to_user,
         defaults={"status": "pending"}
@@ -316,3 +317,57 @@ def notification_count(request: HttpRequest):
         count = request.user.notifications.filter(is_read=False).count()
         return {"unread_notifications_count": count}
     return {"unread_notifications_count": 0}
+
+
+def friends_list_view(request: HttpRequest):
+    if not request.user.is_authenticated:
+        return redirect("login")
+    
+    friends = request.user.friends.all()
+
+    for friend in friends:
+        status = cache.get(f"user_online_{friend.id}", "offline")
+        friend.online_status = status
+
+    return render(request, "fulabra_app/friends_list.html", {"friends": friends})
+
+
+def search_friends_view(request: HttpRequest):
+    if not request.user.is_authenticated:
+        return HttpResponse("")
+    
+    query = request.GET.get("q", "").strip()
+    if len(query) < 3:
+        return HttpResponse("") # Impede a busca com menos de 3 caracteres
+    
+    results = request.user.friends.filter(
+        Q(username_icontains=query) | Q(player__nickname__icontains=query)
+    )
+
+    return render(request, "fulabra_app/partials/search_results.html", {"results": results})
+
+
+def search_users_view(request: HttpRequest):
+    if not request.user.is_authenticated:
+        return HttpResponse("")
+    
+    query = request.GET.get("q", "").strip()
+    if len(query) < 3:
+        return HttpResponse("") # Impede a busca com menos de 3 caracteres
+    
+    # Não busca pelo próprio usuario nem amigos
+    results = User.objects.filter(
+        Q(username__icontains=query)
+    ).exclude(id=request.user.id).exclude(id__in=request.user.friends.all())[:10]
+
+    return render(request, "fulabra_app/partials/search_results.html", {"results": results})
+
+
+def remove_friend_view(request: HttpRequest, username: str):
+    if not request.user.is_authenticated or request.method != "POST":
+        return HttpResponse("Unauthorized", status=401)
+    
+    friend_to_remove = get_object_or_404(User, username=username)
+    request.user.friends.remove(friend_to_remove)
+
+    return HttpResponse("")
