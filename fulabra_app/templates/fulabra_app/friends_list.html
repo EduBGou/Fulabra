@@ -2,9 +2,7 @@
 
 {% block body %}
 <div class="container py-4 max-w-md mx-auto" style="max-width: 600px;">
-  <h2 class="fw-bold mb-4 d-flex align-items-center gap-2">
-    <i class="bi bi-people-fill text-primary"></i> Friends
-  </h2>
+  <h2 class="fw-bold mb-4 d-flex align-items-center gap-2"> Friends</h2>
 
   <ul class="nav nav-pills nav-fill mb-4 bg-white shadow-sm p-1 rounded-pill" id="friendsTabs" role="tablist">
     <li class="nav-item" role="presentation">
@@ -17,7 +15,7 @@
 
   <div class="tab-content" id="friendsTabsContent">
  
-    <button class="btn btn-outline-primary rounded-pill btn-sm fw-bold" 
+    <button class="btn btn-outline-primary rounded-pill btn-sm fw-bold mb-2" 
         onclick="navigator.clipboard.writeText('{{ request.scheme }}://{{ request.get_host }}{% url 'invite_link' request.user.username %}'); alert('Link copied!');">
       <i class="bi bi-link-45deg"></i> Share Invite Link
     </button>
@@ -27,7 +25,7 @@
         <input type="text" id="friend-filter" class="form-control rounded-pill border-0 shadow-sm px-4" placeholder="Filter friends by name...">
       </div>
 
-      <div id="friends-list" class="d-flex flex-column gap-2">
+      <div id="friends-list" class="d-flex flex-column gap-5">
         {% for friend in friends %}
           <div class="card border-0 shadow-sm rounded-4 p-3 animate__animated animate__fadeIn friend-card" id="friend-card-{{ friend.username }}">
             <div class="d-flex justify-content-between align-items-center">
@@ -44,7 +42,7 @@
                       style="width: 14px; height: 14px; bottom: 1px; right: 1px;">
                 </span>
               </div>
-                <div class="d-flex flex-column friend-names">
+                <div class="d-flex flex-column friend-names mx-2">
                   <a href="{% url 'profile' friend.username %}" class="text-decoration-none fw-bold text-dark fs-5 lh-1">{{ friend.player.nickname }}</a>
                   <small class="text-muted">@{{ friend.username }}</small>
                 </div>

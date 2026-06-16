@@ -150,7 +150,7 @@ def lobby_room_view(request: HttpRequest, lobby_code: str):
 
 
 def login_view(request: HttpRequest):
-    next_url = request.GET.get("next")
+    next_url = request.GET.get("next") or request.POST.get("next")
 
     if request.method == "POST":
         form = LoginForm(request, data=request.POST)
@@ -159,9 +159,11 @@ def login_view(request: HttpRequest):
             login(request, user)
 
             if next_url:
-                response = HttpResponse()
-                response["HX-Redirect"] = next_url
-                return response
+                if request.headers.get("HX-Request"):
+                    response = HttpResponse()
+                    response["HX-Redirect"] = next_url
+                    return response
+                return redirect(next_url)
             
             return hx_redirect("index")
 
@@ -169,12 +171,12 @@ def login_view(request: HttpRequest):
             return render(
                 request,
                 "fulabra_app/partials/login_form_inner.html",
-                {"form": form},
+                {"form": form, "next_url":next_url},
             )
     else:
         form = LoginForm()
 
-    return render(request, "fulabra_app/login.html", {"form": form})
+    return render(request, "fulabra_app/login.html", {"form": form, "next_url": next_url})
 
 
 def logout_view(request: HttpRequest):
@@ -183,22 +185,33 @@ def logout_view(request: HttpRequest):
 
 
 def register_view(request: HttpRequest):
+    next_url = request.GET.get("next") or request.POST.get("next")
+
     if request.method == "POST":
         form = UserRegistrationForm(request.POST)
 
         if form.is_valid():
             user = form.save()
             login(request, user)
+        
+            if next_url:
+                if request.headers.get("HX-Request"):
+                    response = HttpResponse()
+                    response["HX-Redirect"] = next_url
+                    return response
+                return redirect(next_url)
+                
             return hx_redirect("index")
 
         if request.headers.get("HX-Request"):
             return render(
-                request, "fulabra_app/partials/register_form_inner.html", {"form": form}
+                request, "fulabra_app/partials/register_form_inner.html", 
+                {"form": form, "next_url": next_url}
             )
     else:
         form = UserRegistrationForm()
 
-    return render(request, "fulabra_app/register.html", {"form": form})
+    return render(request, "fulabra_app/register.html", {"form": form, "next_url": next_url})
 
 
 def profile_view(request: HttpRequest, username: str):
@@ -213,13 +226,16 @@ def profile_view(request: HttpRequest, username: str):
     friend_status = None
 
     if not is_owner and logged_user.is_authenticated:
-        friend_request = FriendRequest.objects.filter(
-            Q(from_user=logged_user, to_user=user)
-            | Q(from_user=user, to_user=logged_user)
-        ).first()
+        if logged_user.friends.filter(id=user.id).exists():
+            friend_status = "accepted"
+        else:
+            friend_request = FriendRequest.objects.filter(
+                Q(from_user=logged_user, to_user=user)
+                | Q(from_user=user, to_user=logged_user)
+            ).first()
 
-        if friend_request:
-            friend_status = friend_request.status
+            if friend_request:
+                friend_status = friend_request.status
 
     context = {
         "user_player": user_player,
@@ -393,10 +409,11 @@ def invite_link_view(request: HttpRequest, username: str):
     if request.user in target_user.friends.all():
         return redirect("profile", username=target_user.username)
     
-    FriendRequest.objects.update_or_create(
-        from_user=request.user,
-        to_user=target_user,
-        defaults={"status": "pending"}
+    request.user.friends.add(target_user)
+
+    FriendRequest.objects.filter(
+        Q(from_user=request.user, to_user=target_user) |
+        Q(from_user=target_user, to_user=request.user)
     )
 
     return redirect("profile", username=target_user.username)

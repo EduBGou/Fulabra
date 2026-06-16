@@ -1,6 +1,10 @@
 <form hx-post="{% url 'register' %}" hx-target="#register-card-body" hx-swap="innerHTML" novalidate>
   {% csrf_token %}
 
+  {% if next_url %}
+    <input type="hidden" name="next" value="{{ next_url }}">
+  {% endif %}
+
   {% if form.errors and not form.non_field_errors %}
     <div class="alert alert-danger border-0 rounded-3 small mb-3">
       <i class="bi bi-exclamation-triangle-fill me-2"></i> Please correct the highlighted fields below.

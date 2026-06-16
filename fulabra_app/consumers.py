@@ -7,6 +7,7 @@ from django.core.cache import cache
 from asgiref.sync import async_to_sync
 from .contexts import *
 from .models import *
+from .utils import broadcast_user_status
 
 
 class LobbyConsumer(WebsocketConsumer):
@@ -85,6 +86,7 @@ class LobbyConsumer(WebsocketConsumer):
 
         if self.user.is_authenticated:
             cache.set(f"user_online_{self.user.id}", "online", timeout=600)
+            broadcast_user_status(self.user, "online")
 
     def receive(self, text_data=None, bytes_data=None):
         import json
@@ -163,6 +165,7 @@ class LobbyConsumer(WebsocketConsumer):
         for member in self.lobby.memberships.all():
             if member.player.user:
                 cache.set(f"user_online_{member.player.user.id}", "in_game", timeout=600)
+                broadcast_user_status(member.player.user, "in_game")
 
         context = {"lobby": self.lobby}
         html = render_to_string(
@@ -255,17 +258,7 @@ class NotificationConsumer(WebsocketConsumer):
         self.send(text_data=html)
 
     def broadcast_status_to_friends(self, status):
-        friends = self.user.friends.all()
-        for friend in friends:
-            friends_group = f"notifications_{friend.username}"
-            async_to_sync(self.channel_layer.group_send)(
-                friends_group,
-                {
-                    "type": "send_status_update",
-                    "friend_username": self.user.username,
-                    "status": status
-                } 
-            )
+        broadcast_user_status(self.user, status)
     
     def send_status_update(self, event):
         friend_username = event["friend_username"]
