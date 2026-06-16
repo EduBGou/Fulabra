@@ -2,7 +2,10 @@ from django.http import HttpRequest, HttpResponse
 from django.urls import reverse
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
+
+from fulabra import settings
 from .models import LobbyGroup, Player
+
 
 def hx_redirect(viewname: str, kwargs: dict = None):
     response = HttpResponse()
@@ -29,6 +32,12 @@ def lobby_is_full(lobby: LobbyGroup, player: Player = None) -> bool:
     if player and lobby.memberships.filter(player=player).exists():
         return False
     return lobby.memberships.count() >= max_capacity
+
+
+def invite_to_lobby(lobby: LobbyGroup) -> str:
+    path = reverse("lobby_invite", kwargs={"lobby_code": lobby.code})
+    base_url = settings.BACKEND_BASE_URL.rstrip("/")
+    return f"{base_url}{path}"
 
 
 def broadcast_user_status(user, status):

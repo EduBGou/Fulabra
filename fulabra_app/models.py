@@ -58,7 +58,6 @@ class LobbyGroup(models.Model):
 
     class LobbyStatus(models.TextChoices):
         WAITING = "waiting", _("Waiting for Players")
-        STARTING = "starting", _("Starting Countdown")
         PLAYING = "playing", _("In Game")
         FINISHED = "finished", _("Game Over")
 

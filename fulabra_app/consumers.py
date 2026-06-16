@@ -5,6 +5,7 @@ from django.template.loader import render_to_string
 from django.contrib.sessions.backends.base import SessionBase
 from django.core.cache import cache
 from asgiref.sync import async_to_sync
+
 from .contexts import *
 from .models import *
 from .utils import broadcast_user_status
@@ -65,7 +66,7 @@ class LobbyConsumer(WebsocketConsumer):
         self.accept()
         async_to_sync(self.channel_layer.group_add)(self.lobby_code, self.channel_name)
 
-        self.broadcast_player_list()
+        self.group_send_player_list()
 
     def disconnect(self, code):
 
@@ -95,19 +96,48 @@ class LobbyConsumer(WebsocketConsumer):
         if data.get("action") == "start_game":
             self.lobby.refresh_from_db()
             if self.lobby.memberships.count() == 3 and self.lobby.leader == self.player:
-                self.lobby.status = LobbyGroup.LobbyStatus.STARTING
-                self.lobby.save()
-            threading.Thread(target=self.run_countdown, daemon=True).start()
-        elif data.get("action") == "cancel_match":
-            self.lobby.refresh_from_db()
-            if (
-                self.lobby.leader == self.player
-                and self.lobby.status == LobbyGroup.LobbyStatus.STARTING
-            ):
-                self.lobby.status = LobbyGroup.LobbyStatus.WAITING
+                self.lobby.status = LobbyGroup.LobbyStatus.PLAYING
                 self.lobby.save()
 
-                self.broadcast_player_list()
+                for member in self.lobby.memberships.all():
+                    if member.player.user:
+                        cache.set(f"user_online_{member.player.user.id}", "in_game", timeout=600)
+                        broadcast_user_status(member.player.user, "in_game")
+
+                context = {"lobby": self.lobby}
+                html = render_to_string(
+                    "fulabra_app/partials/game_board.html", {"context": context}
+                )
+                self.group_send_html(html)
+
+    def group_send_html(self, html):
+        async_to_sync(self.channel_layer.group_send)(
+            self.lobby_code,
+            {"type": self.send_html_event.__name__, "html": html},
+        )
+
+    def send_html_event(self, event):
+        self.send(text_data=event["html"])
+
+    def group_send_player_list(self):
+        async_to_sync(self.channel_layer.group_send)(
+            self.lobby_code, {"type": self.send_player_list_event.__name__}
+        )
+
+    def send_player_list_event(self, event):
+        if self.lobby_player_membership:
+            try:
+                self.lobby_player_membership.refresh_from_db()
+            except LobbyPlayer.DoesNotExist:
+                return
+
+        self.lobby.refresh_from_db()
+        context = PlayerListContext(self.lobby_player_membership)
+        html = render_to_string(
+            "fulabra_app/partials/player_list.html", {"context": context}
+        )
+
+        self.send(text_data=html)
 
     def player_cleanup(self, lobby_code: str, membership_id: int, timer_key: str):
         if timer_key in self.disconnect_timers:
@@ -128,81 +158,9 @@ class LobbyConsumer(WebsocketConsumer):
                 LobbyPlayer.objects.filter(lobby=fresh_lobby).first().player
             )
             fresh_lobby.save()
-            self.broadcast_player_list()
-
-    def run_countdown(self):
-        import time
-
-        for seconds_left in range(5, 0, -1):
-
-            self.lobby.refresh_from_db()
-            if self.lobby.status != LobbyGroup.LobbyStatus.STARTING:
-                return
-
-            context = {"seconds_left": seconds_left}
-            html = render_to_string(
-                "fulabra_app/partials/countdown.html", {"context": context}
-            )
-
-            async_to_sync(self.channel_layer.group_send)(
-                self.lobby_code,
-                {"type": self.broadcast_html.__name__, "html": html},
-            )
-
-            cancel_button_html = render_to_string(
-                "fulabra_app/partials/cancel_button.html"
-            )
-            async_to_sync(self.channel_layer.send)(
-                self.channel_name,
-                {"type": self.broadcast_html.__name__, "html": cancel_button_html},
-            )
-
-            time.sleep(1)
-
-        self.lobby.status = LobbyGroup.LobbyStatus.PLAYING
-        self.lobby.save()
-
-        for member in self.lobby.memberships.all():
-            if member.player.user:
-                cache.set(f"user_online_{member.player.user.id}", "in_game", timeout=600)
-                broadcast_user_status(member.player.user, "in_game")
-
-        context = {"lobby": self.lobby}
-        html = render_to_string(
-            "fulabra_app/partials/game_board.html", {"context": context}
-        )
-
-        async_to_sync(self.channel_layer.group_send)(
-            self.lobby_code,
-            {"type": self.broadcast_html.__name__, "html": html},
-        )
-
-    def send_current_players(self, event):
-        if self.lobby_player_membership:
-            try:
-                self.lobby_player_membership.refresh_from_db()
-            except LobbyPlayer.DoesNotExist:
-                return
-
-        self.lobby.refresh_from_db()
-        context = PlayerListContext(self.lobby_player_membership)
-        html = render_to_string(
-            "fulabra_app/partials/player_list.html", {"context": context}
-        )
-
-        self.send(text_data=html)
-
-    def broadcast_html(self, event):
-        self.send(text_data=event["html"])
-
-    def broadcast_player_list(self):
-        """Sends a signal to the entire group channel to refresh their lists."""
-        async_to_sync(self.channel_layer.group_send)(
-            self.lobby_code, {"type": self.send_current_players.__name__}
-        )
+            self.group_send_player_list()
 
     def send_error_message(self, message: str):
-        """Utility helper to push immediate partial errors back to client interface."""
         context = {"error_message": message}
         html = render_to_string(
             "fulabra_app/partials/error_message.html", {"context": context}

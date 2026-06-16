@@ -5,7 +5,7 @@ from django.urls import reverse
 from django.db.models import Q
 from django.core.cache import cache
 from .forms import GuestForm, LoginForm, UserRegistrationForm, EditPlayerForm
-from .utils import hx_redirect, lobby_is_full, set_player_preset_avatar
+from .utils import hx_redirect, invite_to_lobby, lobby_is_full, set_player_preset_avatar
 from .contexts import LobbyContext
 from .models import *
 
@@ -139,13 +139,10 @@ def lobby_room_view(request: HttpRequest, lobby_code: str):
             {"context": {"error_message": "This lobby already start the match."}},
         )
     else:
-        invite = request.build_absolute_uri(
-            reverse("lobby_invite", kwargs={"lobby_code": lobby.code})
-        )
         return render(
             request,
             "fulabra_app/lobby.html",
-            {"context": LobbyContext(lobby, player, invite)},
+            {"context": LobbyContext(lobby, player, invite_to_lobby(lobby))},
         )
 
 
