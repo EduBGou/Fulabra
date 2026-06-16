@@ -221,6 +221,8 @@ class NotificationConsumer(WebsocketConsumer):
 
             cache.set(f"user_online_{self.user.id}", "online", timeout=600)
 
+            self.broadcast_status_to_friends("online")
+
             self.accept()
         else: 
             self.close()
@@ -233,7 +235,9 @@ class NotificationConsumer(WebsocketConsumer):
             )
 
             cache.delete(f"user_online_{self.user.id}")
-    
+
+            self.broadcast_status_to_friends("offline")
+
     def send_notification_update(self, event):
         from .models import Notification
         unread_count = Notification.objects.filter(recipient=self.user, is_read=False).count()
@@ -248,4 +252,28 @@ class NotificationConsumer(WebsocketConsumer):
                 card_html = render_to_string("fulabra_app/partials/notification_card.html", {"note": note})
                 html += card_html
                 
+        self.send(text_data=html)
+
+    def broadcast_status_to_friends(self, status):
+        friends = self.user.friends.all()
+        for friend in friends:
+            friends_group = f"notifications_{friend.username}"
+            async_to_sync(self.channel_layer.group_send)(
+                friends_group,
+                {
+                    "type": "send_status_update",
+                    "friend_username": self.user.username,
+                    "status": status
+                } 
+            )
+    
+    def send_status_update(self, event):
+        friend_username = event["friend_username"]
+        status = event["status"]
+
+        html = render_to_string("fulabra_app/partials/friend_status_dot.html", {
+            "friend_username": friend_username,
+            "status": status
+        })
+        
         self.send(text_data=html)

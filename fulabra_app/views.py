@@ -150,11 +150,19 @@ def lobby_room_view(request: HttpRequest, lobby_code: str):
 
 
 def login_view(request: HttpRequest):
+    next_url = request.GET.get("next")
+
     if request.method == "POST":
         form = LoginForm(request, data=request.POST)
         if form.is_valid():
             user = form.get_user()
             login(request, user)
+
+            if next_url:
+                response = HttpResponse()
+                response["HX-Redirect"] = next_url
+                return response
+            
             return hx_redirect("index")
 
         if request.headers.get("HX-Request"):
@@ -371,3 +379,24 @@ def remove_friend_view(request: HttpRequest, username: str):
     request.user.friends.remove(friend_to_remove)
 
     return HttpResponse("")
+
+
+def invite_link_view(request: HttpRequest, username: str):
+    if not request.user.is_authenticated:
+        return redirect(f"/login?next=/invite/{username}/")
+    
+    target_user = get_object_or_404(User, username=username)
+
+    if target_user == request.user:
+        return redirect("profile", username=request.user.username)
+    
+    if request.user in target_user.friends.all():
+        return redirect("profile", username=target_user.username)
+    
+    FriendRequest.objects.update_or_create(
+        from_user=request.user,
+        to_user=target_user,
+        defaults={"status": "pending"}
+    )
+
+    return redirect("profile", username=target_user.username)

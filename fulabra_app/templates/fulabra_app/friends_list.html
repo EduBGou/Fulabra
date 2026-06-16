@@ -16,7 +16,12 @@
   </ul>
 
   <div class="tab-content" id="friendsTabsContent">
-    
+ 
+    <button class="btn btn-outline-primary rounded-pill btn-sm fw-bold" 
+        onclick="navigator.clipboard.writeText('{{ request.scheme }}://{{ request.get_host }}{% url 'invite_link' request.user.username %}'); alert('Link copied!');">
+      <i class="bi bi-link-45deg"></i> Share Invite Link
+    </button>
+ 
     <div class="tab-pane fade show active" id="my-friends" role="tabpanel">
       <div class="mb-3">
         <input type="text" id="friend-filter" class="form-control rounded-pill border-0 shadow-sm px-4" placeholder="Filter friends by name...">
@@ -28,15 +33,17 @@
             <div class="d-flex justify-content-between align-items-center">
               
               <div class="d-flex align-items-center gap-3">
-                <div class="position-relative">
-                  <img src="{{ friend.player.avatar.url|default:'avatars/default_avatar.png' }}" class="rounded-circle" style="width: 48px; height: 48px; object-fit: cover;">
-                  <span class="position-absolute bottom-0 end-0 p-1 border border-white rounded-circle 
-                    {% if friend.online_status == 'online' %}bg-success
-                    {% elif friend.online_status == 'in_game' %}bg-primary
-                    {% else %}bg-secondary{% endif %}" 
-                    style="width: 14px; height: 14px; transform: translate(-10%, -10%);">
-                  </span>
-                </div>
+                <div class="position-relative d-inline-block" style="width: 48px; height: 48px;">
+                <img src="{{ friend.player.avatar.url|default:'avatars/default_avatar.png' }}" class="rounded-circle w-100 h-100" style="object-fit: cover;">
+                
+                <span id="status-dot-{{ friend.username }}" 
+                      class="position-absolute border border-2 border-white rounded-circle 
+                      {% if friend.online_status == 'online' %}bg-success
+                      {% elif friend.online_status == 'in_game' %}bg-primary
+                      {% else %}bg-secondary{% endif %}" 
+                      style="width: 14px; height: 14px; bottom: 1px; right: 1px;">
+                </span>
+              </div>
                 <div class="d-flex flex-column friend-names">
                   <a href="{% url 'profile' friend.username %}" class="text-decoration-none fw-bold text-dark fs-5 lh-1">{{ friend.player.nickname }}</a>
                   <small class="text-muted">@{{ friend.username }}</small>
@@ -65,7 +72,7 @@
     <div class="tab-pane fade" id="find-users" role="tabpanel">
       <div class="mb-3 position-relative">
         <input type="text" class="form-control rounded-pill border-0 shadow-sm px-4" 
-               placeholder="Search by nickname or @username..."
+               placeholder="Search by @username..."
                name="q"
                hx-get="{% url 'search_users' %}"
                hx-trigger="keyup changed delay:500ms"
