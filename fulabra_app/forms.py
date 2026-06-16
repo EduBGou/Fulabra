@@ -129,7 +129,9 @@ class EditPlayerForm(GuestForm):
 
 
 class GameWordForm(forms.Form):
-    action = forms.CharField(widget=forms.HiddenInput(), initial="submit_word")
+    action = forms.CharField(
+        widget=forms.HiddenInput(attrs={"id": "action"}), initial="submit_word"
+    )
 
     word = forms.CharField(
         max_length=40,

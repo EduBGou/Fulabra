@@ -2,16 +2,7 @@ from dataclasses import dataclass
 from typing import List
 
 from fulabra_app.forms import GameWordForm
-from .models import (
-    GamePlayer,
-    GameRound,
-    LobbyGroup,
-    LobbyPlayer,
-    Player,
-    SubmittedWord,
-    User,
-    Word,
-)
+from .models import *
 
 @dataclass
 class RegisterContext:

@@ -238,6 +238,9 @@ class LobbyConsumer(WebsocketConsumer):
         self.game.status = Game.GameStatus.RESULT
         self.game.save()
 
+        if self.player != self.lobby.leader:
+            return
+
         self.current_round = self.game.rounds.last()
         submissions = self.get_submissions()
 
