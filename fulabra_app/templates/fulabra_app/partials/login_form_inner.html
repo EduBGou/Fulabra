@@ -1,6 +1,10 @@
 <form hx-post="{% url 'login' %}" hx-target="#login-card-body" hx-swap="innerHTML" novalidate>
   {% csrf_token %}
 
+  {% if next_url %}
+    <input type="hidden" name="next" value="{{ next_url }}">
+  {% endif %}
+
   {% if form.non_field_errors %}
     {% for error in form.non_field_errors %}
       <div class="alert alert-danger border-0 rounded-3 small mb-3">{{ error }}</div>

@@ -3,6 +3,7 @@ from django.contrib.auth import login, logout
 from django.http import HttpRequest, HttpResponse
 from django.urls import reverse
 from django.db.models import Q
+from django.core.cache import cache
 from .forms import GuestForm, LoginForm, UserRegistrationForm, EditPlayerForm
 from .utils import hx_redirect, lobby_is_full, set_player_preset_avatar
 from .contexts import LobbyContext
@@ -149,23 +150,33 @@ def lobby_room_view(request: HttpRequest, lobby_code: str):
 
 
 def login_view(request: HttpRequest):
+    next_url = request.GET.get("next") or request.POST.get("next")
+
     if request.method == "POST":
         form = LoginForm(request, data=request.POST)
         if form.is_valid():
             user = form.get_user()
             login(request, user)
+
+            if next_url:
+                if request.headers.get("HX-Request"):
+                    response = HttpResponse()
+                    response["HX-Redirect"] = next_url
+                    return response
+                return redirect(next_url)
+            
             return hx_redirect("index")
 
         if request.headers.get("HX-Request"):
             return render(
                 request,
                 "fulabra_app/partials/login_form_inner.html",
-                {"form": form},
+                {"form": form, "next_url":next_url},
             )
     else:
         form = LoginForm()
 
-    return render(request, "fulabra_app/login.html", {"form": form})
+    return render(request, "fulabra_app/login.html", {"form": form, "next_url": next_url})
 
 
 def logout_view(request: HttpRequest):
@@ -174,22 +185,33 @@ def logout_view(request: HttpRequest):
 
 
 def register_view(request: HttpRequest):
+    next_url = request.GET.get("next") or request.POST.get("next")
+
     if request.method == "POST":
         form = UserRegistrationForm(request.POST)
 
         if form.is_valid():
             user = form.save()
             login(request, user)
+        
+            if next_url:
+                if request.headers.get("HX-Request"):
+                    response = HttpResponse()
+                    response["HX-Redirect"] = next_url
+                    return response
+                return redirect(next_url)
+                
             return hx_redirect("index")
 
         if request.headers.get("HX-Request"):
             return render(
-                request, "fulabra_app/partials/register_form_inner.html", {"form": form}
+                request, "fulabra_app/partials/register_form_inner.html", 
+                {"form": form, "next_url": next_url}
             )
     else:
         form = UserRegistrationForm()
 
-    return render(request, "fulabra_app/register.html", {"form": form})
+    return render(request, "fulabra_app/register.html", {"form": form, "next_url": next_url})
 
 
 def profile_view(request: HttpRequest, username: str):
@@ -204,13 +226,16 @@ def profile_view(request: HttpRequest, username: str):
     friend_status = None
 
     if not is_owner and logged_user.is_authenticated:
-        friend_request = FriendRequest.objects.filter(
-            Q(from_user=logged_user, to_user=user)
-            | Q(from_user=user, to_user=logged_user)
-        ).first()
+        if logged_user.friends.filter(id=user.id).exists():
+            friend_status = "accepted"
+        else:
+            friend_request = FriendRequest.objects.filter(
+                Q(from_user=logged_user, to_user=user)
+                | Q(from_user=user, to_user=logged_user)
+            ).first()
 
-        if friend_request:
-            friend_status = friend_request.status
+            if friend_request:
+                friend_status = friend_request.status
 
     context = {
         "user_player": user_player,
@@ -298,7 +323,7 @@ def add_friend_view(request: HttpRequest, player_id: int):
     from_user = request.user
 
     # Para não criar pedidos duplicados
-    friend_request, created = FriendRequest.objects.get_or_create(
+    friend_request, created = FriendRequest.objects.update_or_create(
         from_user=from_user,
         to_user=to_user,
         defaults={"status": "pending"}
@@ -316,3 +341,79 @@ def notification_count(request: HttpRequest):
         count = request.user.notifications.filter(is_read=False).count()
         return {"unread_notifications_count": count}
     return {"unread_notifications_count": 0}
+
+
+def friends_list_view(request: HttpRequest):
+    if not request.user.is_authenticated:
+        return redirect("login")
+    
+    friends = request.user.friends.all()
+
+    for friend in friends:
+        status = cache.get(f"user_online_{friend.id}", "offline")
+        friend.online_status = status
+
+    return render(request, "fulabra_app/friends_list.html", {"friends": friends})
+
+
+def search_friends_view(request: HttpRequest):
+    if not request.user.is_authenticated:
+        return HttpResponse("")
+    
+    query = request.GET.get("q", "").strip()
+    if len(query) < 3:
+        return HttpResponse("") # Impede a busca com menos de 3 caracteres
+    
+    results = request.user.friends.filter(
+        Q(username_icontains=query) | Q(player__nickname__icontains=query)
+    )
+
+    return render(request, "fulabra_app/partials/search_results.html", {"results": results})
+
+
+def search_users_view(request: HttpRequest):
+    if not request.user.is_authenticated:
+        return HttpResponse("")
+    
+    query = request.GET.get("q", "").strip()
+    if len(query) < 3:
+        return HttpResponse("") # Impede a busca com menos de 3 caracteres
+    
+    # Não busca pelo próprio usuario nem amigos
+    results = User.objects.filter(
+        Q(username__icontains=query)
+    ).exclude(id=request.user.id).exclude(id__in=request.user.friends.all())[:10]
+
+    return render(request, "fulabra_app/partials/search_results.html", {"results": results})
+
+
+def remove_friend_view(request: HttpRequest, username: str):
+    if not request.user.is_authenticated or request.method != "POST":
+        return HttpResponse("Unauthorized", status=401)
+    
+    friend_to_remove = get_object_or_404(User, username=username)
+    request.user.friends.remove(friend_to_remove)
+
+    return HttpResponse("")
+
+
+def invite_link_view(request: HttpRequest, username: str):
+    if not request.user.is_authenticated:
+        return redirect(f"/login?next=/invite/{username}/")
+    
+    target_user = get_object_or_404(User, username=username)
+
+    if target_user == request.user:
+        return redirect("profile", username=request.user.username)
+    
+    if request.user in target_user.friends.all():
+        return redirect("profile", username=target_user.username)
+    
+    request.user.friends.add(target_user)
+
+    FriendRequest.objects.filter(
+        Q(from_user=request.user, to_user=target_user) |
+        Q(from_user=target_user, to_user=request.user)
+    )
+
+    return redirect("profile", username=target_user.username)

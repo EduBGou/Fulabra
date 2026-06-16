@@ -27,13 +27,18 @@ def delete_guest_player_on_lobby_leave(sender, instance: LobbyPlayer, **kwargs):
 
 @receiver(post_save, sender=FriendRequest)
 def generic_friend_request_notification(sender, instance, created, **kwargs):
-    if created and instance.status == "pending":
-        Notification.objects.create(
+    if instance.status == "pending":
+        # Puxa a notificação existente ou cria uma nova
+        note, note_created = Notification.objects.get_or_create(
             recipient=instance.to_user,
             sender=instance.from_user,
             notification_type="friend_request",
             target_id=instance.id
         )
+
+        if not note_created and note.is_read:
+            note.is_read = False
+            note.save()
 
 
 @receiver(post_save, sender=Notification)

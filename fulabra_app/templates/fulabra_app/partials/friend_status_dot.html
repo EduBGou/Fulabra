@@ -1,0 +1,7 @@
+<span id="status-dot-{{ friend_username }}" hx-swap-oob="true" 
+      class="position-absolute bottom-0 end-0 p-1 border border-white rounded-circle 
+      {% if status == 'online' %}bg-success
+      {% elif status == 'in_game' %}bg-primary
+      {% else %}bg-secondary{% endif %}" 
+      style="width: 14px; height: 14px; bottom: 1px; right: 1px;">    
+</span>

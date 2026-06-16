@@ -3,9 +3,11 @@ import json
 from channels.generic.websocket import WebsocketConsumer
 from django.template.loader import render_to_string
 from django.contrib.sessions.backends.base import SessionBase
+from django.core.cache import cache
 from asgiref.sync import async_to_sync
 from .contexts import *
 from .models import *
+from .utils import broadcast_user_status
 
 
 class LobbyConsumer(WebsocketConsumer):
@@ -82,6 +84,10 @@ class LobbyConsumer(WebsocketConsumer):
             self.disconnect_timers[timer_key] = cleanup_timer
             cleanup_timer.start()
 
+        if self.user.is_authenticated:
+            cache.set(f"user_online_{self.user.id}", "online", timeout=600)
+            broadcast_user_status(self.user, "online")
+
     def receive(self, text_data=None, bytes_data=None):
         import json
 
@@ -156,6 +162,11 @@ class LobbyConsumer(WebsocketConsumer):
         self.lobby.status = LobbyGroup.LobbyStatus.PLAYING
         self.lobby.save()
 
+        for member in self.lobby.memberships.all():
+            if member.player.user:
+                cache.set(f"user_online_{member.player.user.id}", "in_game", timeout=600)
+                broadcast_user_status(member.player.user, "in_game")
+
         context = {"lobby": self.lobby}
         html = render_to_string(
             "fulabra_app/partials/game_board.html", {"context": context}
@@ -210,6 +221,11 @@ class NotificationConsumer(WebsocketConsumer):
                 self.group_name,
                 self.channel_name
             )
+
+            cache.set(f"user_online_{self.user.id}", "online", timeout=600)
+
+            self.broadcast_status_to_friends("online")
+
             self.accept()
         else: 
             self.close()
@@ -220,7 +236,11 @@ class NotificationConsumer(WebsocketConsumer):
                 self.group_name,
                 self.channel_name
             )
-    
+
+            cache.delete(f"user_online_{self.user.id}")
+
+            self.broadcast_status_to_friends("offline")
+
     def send_notification_update(self, event):
         from .models import Notification
         unread_count = Notification.objects.filter(recipient=self.user, is_read=False).count()
@@ -235,4 +255,18 @@ class NotificationConsumer(WebsocketConsumer):
                 card_html = render_to_string("fulabra_app/partials/notification_card.html", {"note": note})
                 html += card_html
                 
+        self.send(text_data=html)
+
+    def broadcast_status_to_friends(self, status):
+        broadcast_user_status(self.user, status)
+    
+    def send_status_update(self, event):
+        friend_username = event["friend_username"]
+        status = event["status"]
+
+        html = render_to_string("fulabra_app/partials/friend_status_dot.html", {
+            "friend_username": friend_username,
+            "status": status
+        })
+        
         self.send(text_data=html)
