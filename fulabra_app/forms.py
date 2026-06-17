@@ -1,5 +1,5 @@
 from django import forms
-from .models import Player, User
+from .models import Player, User, Word
 from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 
@@ -126,3 +126,30 @@ class EditPlayerForm(GuestForm):
                 attrs={"class": "d-none", "accept": "image/png, image/jpeg, image/jpg"}
             ),
         }
+
+
+class GameWordForm(forms.Form):
+    action = forms.CharField(
+        widget=forms.HiddenInput(attrs={"id": "action"}), initial="submit_word"
+    )
+
+    word = forms.CharField(
+        max_length=40,
+        widget=forms.TextInput(
+            attrs={
+                "id": "word-input",
+                "class": "form-control form-control-lg fw-semibold",
+                "placeholder": "Type to search...",
+                "list": "word-list",
+            }
+        ),
+    )
+
+    def clean_word(self):
+        word_label: str = self.cleaned_data.get("word")
+        word_obj = Word.objects.filter(label=word_label).first()
+
+        if word_obj:
+            return word_obj
+
+        raise forms.ValidationError("This word is not in the game dictionary!")

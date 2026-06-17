@@ -1,8 +1,6 @@
 from random import choices
-
 from django.db import models
 from django.db.models import QuerySet
-from django.db.models.signals import post_save, pre_save
 from django.contrib.auth.models import AbstractUser
 from django.utils.translation import gettext_lazy as _
 
@@ -47,8 +45,16 @@ class Player(models.Model):
         return getattr(self, Player.leader_lobby.__name__).first()
 
     @property
-    def membership(self) -> LobbyPlayer:
-        return getattr(self, Player.membership.__name__).first()
+    def lobby_membership(self) -> LobbyPlayer:
+        return getattr(self, Player.lobby_membership.__name__).first()
+
+    @property
+    def game_membership(self) -> GamePlayer:
+        return getattr(self, Player.game_membership.__name__).first()
+
+    @property
+    def submitted_words(self) -> QuerySet[SubmittedWord]:
+        return getattr(self, Player.submitted_words.__name__).first()
 
     def __str__(self):
         return f"{self.nickname}"
@@ -81,11 +87,16 @@ class LobbyGroup(models.Model):
     )
 
     @property
-    def memberships(self) -> QuerySet[LobbyPlayer]:
-        return getattr(self, LobbyGroup.memberships.__name__).all()
+    def lobby_memberships(self) -> QuerySet[LobbyPlayer]:
+        return getattr(self, LobbyGroup.lobby_memberships.__name__).all()
+
+    @property
+    def game(self) -> Game:
+        return getattr(self, LobbyGroup.game.__name__).all()
 
     def generate_unique_code(self) -> str:
         """Helper method to generate a unique lobby code"""
+        return "AAAAAA"
         while True:
             new_code = "".join(choices(CHARACTERS, k=LOBBY_CODE_LENGTH))
             if not LobbyGroup.objects.filter(code=new_code).exists():
@@ -99,44 +110,18 @@ class LobbyPlayer(models.Model):
     lobby = models.ForeignKey(
         LobbyGroup,
         on_delete=models.CASCADE,
-        related_name=LobbyGroup.memberships.__name__,
+        related_name=LobbyGroup.lobby_memberships.__name__,
     )
     player = models.OneToOneField(
         Player,
         on_delete=models.CASCADE,
-        related_name=Player.membership.__name__,
+        related_name=Player.lobby_membership.__name__,
     )
 
     joined_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"{self.player} is in {self.lobby}"
-
-
-class Match(models.Model):
-    player1 = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="matches_as_p1"
-    )
-
-    player2 = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="matches_as_p2"
-    )
-
-    player3 = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="matches_as_p3"
-    )
-
-    winner = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
-        related_name="matches_won",
-    )
-
-    date_played = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"Partida {self.id} - Vencedor: {self.winner.username if self.winner else 'Empate'}"
 
 
 class FriendRequest(models.Model):
@@ -194,3 +179,72 @@ class Notification(models.Model):
 
     def __str__(self):
         return f"Para {self.recipient.username} - {self.notification_type} ({"Lida" if self.is_read else "Pendente"})"
+
+
+class Word(models.Model):
+    label = models.CharField(max_length=40)
+
+    @property
+    def submitts(self) -> QuerySet[SubmittedWord]:
+        return getattr(self, Word.submitts.__name__).all()
+
+
+class Game(models.Model):
+    class GameStatus(models.TextChoices):
+        START = "start", _("The game starts")
+        CHOOSING = "choosing", _("Waiting for everyone to choose a word")
+        RESULT = "round_result", _("Showing the round result")
+        FINISHED = "finished", _("Game Over")
+
+    lobby = models.OneToOneField(
+        LobbyGroup, related_name=LobbyGroup.game.__name__, on_delete=models.CASCADE
+    )
+    status = models.CharField(
+        max_length=20, choices=GameStatus.choices, default=GameStatus.START
+    )
+
+    @property
+    def game_memberships(self) -> QuerySet[GamePlayer]:
+        return getattr(self, Game.game_memberships.__name__).all()
+
+    @property
+    def rounds(self) -> QuerySet[GameRound]:
+        return getattr(self, Game.rounds.__name__).all()
+
+
+class GameRound(models.Model):
+    game = models.ForeignKey(
+        Game, related_name=Game.rounds.__name__, on_delete=models.CASCADE
+    )
+    round_number = models.IntegerField()
+
+    @property
+    def submitted_words(self) -> QuerySet[SubmittedWord]:
+        return getattr(self, GameRound.submitted_words.__name__).all()
+
+
+class SubmittedWord(models.Model):
+    round = models.ForeignKey(
+        GameRound,
+        related_name=GameRound.submitted_words.__name__,
+        on_delete=models.CASCADE,
+    )
+    player = models.ForeignKey(
+        Player, related_name=Player.submitted_words.__name__, on_delete=models.CASCADE
+    )
+    word = models.ForeignKey(
+        Word, related_name=Word.submitts.__name__, on_delete=models.CASCADE
+    )
+
+    class Meta:
+        unique_together = ("round", "player")
+
+
+class GamePlayer(models.Model):
+    game = models.ForeignKey(
+        Game, related_name=Game.game_memberships.__name__, on_delete=models.CASCADE
+    )
+    player = models.OneToOneField(
+        Player, related_name=Player.game_membership.__name__, on_delete=models.CASCADE
+    )
+    score = models.IntegerField(default=0)

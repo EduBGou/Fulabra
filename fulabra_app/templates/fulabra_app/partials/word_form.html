@@ -1,0 +1,15 @@
+{% load static %}
+<form id="word-form" ws-send autocomplete="off" class="form-row" hx-swap-oob="innerHTML" data-submitted="{{ context.submitted }}">
+  <div class="word-row">
+    {{ context.form.action }}
+    {{ context.form.word }}
+    {% if context.submitted %}
+      <button type="submit" class="btn btn-lg btn-danger px-4 fw-bold">CANCEL</button>
+    {% else %}
+      <button type="submit" class="btn btn-lg btn-success px-4 fw-bold">Confirm</button>
+    {% endif %}
+  </div>
+  {% if context.form.word.errors %}
+    <div class="alert alert-danger p-2 small mb-2 col">{{ context.form.word.errors.0 }}</div>
+  {% endif %}
+</form>

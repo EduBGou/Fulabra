@@ -4,7 +4,7 @@
       
       <div class="d-flex align-items-center gap-3">
         <img src="{{ result.player.avatar.url|default:'avatars/default_avatar.png' }}" class="rounded-circle" style="width: 40px; height: 40px; object-fit: cover;">
-        <div class="d-flex flex-column">
+        <div class="d-flex flex-column mx-2">
           <a href="{% url 'profile' result.username %}" class="text-decoration-none fw-bold text-dark lh-1">{{ result.player.nickname }}</a>
           <small class="text-muted" style="font-size: 0.75rem;">@{{ result.username }}</small>
         </div>

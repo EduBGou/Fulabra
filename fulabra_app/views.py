@@ -4,6 +4,7 @@ from django.http import HttpRequest, HttpResponse
 from django.urls import reverse
 from django.db.models import Q
 from django.core.cache import cache
+
 from .forms import GuestForm, LoginForm, UserRegistrationForm, EditPlayerForm
 from .utils import hx_redirect, invite_to_lobby, lobby_is_full, set_player_preset_avatar
 from .contexts import LobbyContext
@@ -102,7 +103,7 @@ def guest_form_view(request: HttpRequest, lobby_code: str = ""):
                 id=request.session["guest_player_id"]
             ).first()
             if player:
-                player.membership.delete()
+                player.lobby_membership.delete()
                 player.delete()
         form = GuestForm()
 
@@ -121,7 +122,6 @@ def lobby_room_view(request: HttpRequest, lobby_code: str):
         return render(request, "fulabra_app/index.html", {"context": context})
 
     user: User = request.user
-
     if user.is_authenticated:
         player = user.player
     else:
@@ -130,20 +130,20 @@ def lobby_room_view(request: HttpRequest, lobby_code: str):
         if player is None:
             return redirect("lobby_invite", lobby_code=lobby_code)
 
-    is_player_in_lobby = lobby.memberships.filter(player=player).exists()
+    is_player_in_lobby = lobby.lobby_memberships.filter(player=player).exists()
 
-    if lobby.status != LobbyGroup.LobbyStatus.WAITING and not is_player_in_lobby:
+    if lobby.status == LobbyGroup.LobbyStatus.PLAYING and not is_player_in_lobby:
         return render(
             request,
             "fulabra_app/index.html",
             {"context": {"error_message": "This lobby already start the match."}},
         )
-    else:
-        return render(
-            request,
-            "fulabra_app/lobby.html",
-            {"context": LobbyContext(lobby, player, invite_to_lobby(lobby))},
-        )
+
+    return render(
+        request,
+        "fulabra_app/lobby.html",
+        {"context": LobbyContext(lobby, player, invite_to_lobby(lobby))},
+    )
 
 
 def login_view(request: HttpRequest):
