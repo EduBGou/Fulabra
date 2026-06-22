@@ -1,7 +1,7 @@
 from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
 
-from fulabra_app.models import LobbyGroup, Player, User, LobbyPlayer
+from fulabra_app.models import Game, GameRound, LobbyGroup, Player, User, LobbyPlayer
 
 @receiver(post_save, sender=User)
 def create_user(sender, instance: User, created, **kwargs):
@@ -13,6 +13,12 @@ def create_user(sender, instance: User, created, **kwargs):
 def delete_guest_player_on_lobby_leave(sender, instance: LobbyGroup, **kwargs):
     if not instance.code:
         instance.code = instance.generate_unique_code()
+
+
+@receiver(post_save, sender=Game)
+def create_game(sender, instance: Game, created: bool, **kargs):
+    if created:
+        GameRound.objects.create(game=instance, round_number=1)
 
 
 @receiver(post_delete, sender=LobbyPlayer)

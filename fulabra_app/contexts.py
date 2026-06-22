@@ -4,6 +4,7 @@ from typing import List
 from fulabra_app.forms import GameWordForm
 from .models import *
 
+
 @dataclass
 class RegisterContext:
     username_val: str
@@ -54,6 +55,14 @@ class LobbyContext:
     invite: str
     error_message: str = None
 
+    @property
+    def current_category(self) -> Category:
+        return Category.objects.first()
+
+    @property
+    def categories(self) -> List[Category]:
+        return Category.objects.all()
+
 
 @dataclass
 class GameFrameContext:
@@ -63,7 +72,7 @@ class GameFrameContext:
 
     @property
     def available_words(self) -> List[Word]:
-        return Word.objects.all()
+        return Word.objects.filter(category=self.lobby.game.category).all()
 
 
 @dataclass
@@ -93,3 +102,12 @@ class RoundResultElement:
     player: Player
     word: Word
     score: int
+
+
+@dataclass
+class CategoryContext:
+    current_category: Category
+
+    @property
+    def categories(self) -> List[Category]:
+        return Category.objects.all()

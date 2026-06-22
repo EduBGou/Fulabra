@@ -152,26 +152,61 @@ class FriendRequest(models.Model):
         )
 
 
+class Category(models.Model):
+    name = models.CharField(max_length=64)
+
+    @property
+    def words(self) -> QuerySet[Word]:
+        return getattr(self, Category.words.__name__).all()
+
+    @property
+    def games(self) -> QuerySet[Word]:
+        return getattr(self, Category.games.__name__).all()
+
+    def __str__(self):
+        return f"{self.name}"
+
+
 class Word(models.Model):
     label = models.CharField(max_length=40)
+    category = models.ForeignKey(
+        Category,
+        related_name=Category.words.__name__,
+        on_delete=models.CASCADE,
+    )
 
     @property
     def submitts(self) -> QuerySet[SubmittedWord]:
         return getattr(self, Word.submitts.__name__).all()
 
+    def __str__(self):
+        return f"{self.label}"
+
 
 class Game(models.Model):
+
     class GameStatus(models.TextChoices):
         START = "start", _("The game starts")
         CHOOSING = "choosing", _("Waiting for everyone to choose a word")
         RESULT = "round_result", _("Showing the round result")
         FINISHED = "finished", _("Game Over")
 
+    def get_default_category():
+        category, _ = Category.objects.get_or_create(name="Profissao")
+        return category.id
+
     lobby = models.OneToOneField(
         LobbyGroup, related_name=LobbyGroup.game.__name__, on_delete=models.CASCADE
     )
     status = models.CharField(
         max_length=20, choices=GameStatus.choices, default=GameStatus.START
+    )
+
+    category = models.ForeignKey(
+        Category,
+        related_name=Category.games.__name__,
+        on_delete=models.CASCADE,
+        default=get_default_category,
     )
 
     @property

@@ -127,6 +127,9 @@ class LobbyConsumer(WebsocketConsumer):
         elif data.get("action") == "cancel_submit":
             self.cancel_submit()
 
+        elif data.get("category"):
+            self.broadcast_category(data.get("category"))
+
     def start_game(self):
         self.lobby.refresh_from_db()
         members_count = self.lobby.lobby_memberships.count()
@@ -137,8 +140,10 @@ class LobbyConsumer(WebsocketConsumer):
         self.lobby.status = LobbyGroup.LobbyStatus.PLAYING
         self.lobby.save()
 
-        self.game, _ = Game.objects.get_or_create(lobby=self.lobby)
-        self.current_round = GameRound.objects.create(game=self.game, round_number=1)
+        self.game, _ = Game.objects.get_or_create(
+            lobby=self.lobby, category=self.category
+        )
+        self.current_round = self.game.rounds.last()
 
         # Change to Game.GameStatus.START
         self.game.status = Game.GameStatus.CHOOSING
@@ -210,6 +215,19 @@ class LobbyConsumer(WebsocketConsumer):
         )
 
         self.send(text_data=html)
+
+    def broadcast_category(self, category_name):
+        self.category = Category.objects.filter(name=category_name).first()
+
+        if not self.category:
+            self.send_error_message("Invalid Category!")
+            return
+
+        html = render_to_string(
+            "fulabra_app/partials/category.html",
+            {"context": CategoryContext(self.category)},
+        )
+        self.group_send_html(html)
 
     def run_countdown_timer(self, lobby_code, duration):
         """Asynchronous worker that decrements time and pushes updates to clients"""

@@ -8,8 +8,9 @@
 
   <datalist id="word-list" class="custom-dropdown shadow rounded-3 d-none">
     {% for word in context.available_words %}
-      <option class="dropdown-item-row px-3 py-2 text-start transition-all">{{ word.label }}</option>
+      <option>{{ word.label }}</option>
     {% endfor %}
   </datalist>
 </div>
 <div id="online-friends-div" hx-swap-oob="true"></div>
+  
