@@ -291,6 +291,31 @@ def notification_action_view(request: HttpRequest, notification_id: int):
                     friend_request.status = "rejected"
                 friend_request.save()
         
+        elif notification.notification_type == "game_invite":
+            if action == "accept":
+                lobby = LobbyGroup.objects.filter(id=notification.target_id).first()
+
+                notification.is_read = True
+                notification.save()
+                
+                if lobby:
+                    return hx_redirect("lobby_invite", kwargs={"lobby_code": lobby.code})
+                else:
+                    return HttpResponse("Lobby no longer exists", status=404)
+            elif action == "reject":
+                notification.is_read = True
+                notification.save()
+
+                # Se o convite foi recusado, libera o botão de volta pra enviar convite
+                from channels.layers import get_channel_layer
+                from asgiref.sync import async_to_sync
+                
+                channel_layer = get_channel_layer()
+                async_to_sync(channel_layer.group_send)(
+                    f"notifications_{notification.sender.username}",
+                    {"type": "trigger_sidebar_refresh"}
+                )
+        
         notification.is_read = True
         notification.save()
 
@@ -308,6 +333,13 @@ def notification_action_view(request: HttpRequest, notification_id: int):
 
         return HttpResponse("")
     return HttpResponse("Invalid Request", status=400)
+
+
+def notification_count(request: HttpRequest):
+    if request.user.is_authenticated:
+        count = request.user.notifications.filter(is_read=False).count()
+        return {"unread_notifications_count": count}
+    return {"unread_notifications_count": 0}
 
 
 def add_friend_view(request: HttpRequest, player_id: int):
@@ -333,11 +365,19 @@ def add_friend_view(request: HttpRequest, player_id: int):
     )
 
 
-def notification_count(request: HttpRequest):
-    if request.user.is_authenticated:
-        count = request.user.notifications.filter(is_read=False).count()
-        return {"unread_notifications_count": count}
-    return {"unread_notifications_count": 0}
+def remove_friend_view(request: HttpRequest, username: str):
+    if not request.user.is_authenticated or request.method != "POST":
+        return HttpResponse("Unauthorized", status=401)
+    
+    friend_to_remove = get_object_or_404(User, username=username)
+    request.user.friends.remove(friend_to_remove)
+
+    FriendRequest.objects.filter(
+        Q(from_user=request.user, to_user=friend_to_remove) |
+        Q(from_user=friend_to_remove, to_user=request.user)
+    ).delete()
+
+    return HttpResponse("")
 
 
 def friends_list_view(request: HttpRequest):
@@ -384,16 +424,6 @@ def search_users_view(request: HttpRequest):
     return render(request, "fulabra_app/partials/search_results.html", {"results": results})
 
 
-def remove_friend_view(request: HttpRequest, username: str):
-    if not request.user.is_authenticated or request.method != "POST":
-        return HttpResponse("Unauthorized", status=401)
-    
-    friend_to_remove = get_object_or_404(User, username=username)
-    request.user.friends.remove(friend_to_remove)
-
-    return HttpResponse("")
-
-
 def invite_link_view(request: HttpRequest, username: str):
     if not request.user.is_authenticated:
         return redirect(f"/login?next=/invite/{username}/")
@@ -414,3 +444,52 @@ def invite_link_view(request: HttpRequest, username: str):
     )
 
     return redirect("profile", username=target_user.username)
+
+
+def invite_friend_to_lobby_view(request: HttpRequest, lobby_code: str, friend_id: int):
+    if not request.user.is_authenticated:
+        return HttpResponse("Unauthorized", status=401)
+    
+    lobby = get_object_or_404(LobbyGroup, code=lobby_code)
+
+    if lobby.lobby_memberships.count() >= 3:
+        return HttpResponse(
+            '<button type="button" class="btn btn-sm btn-dark rounded-pill px-3 fw-bold" disabled>'
+            '<i class="bi bi-slash-circle me-1"></i> Lobby Full'
+            '</button>'
+        )
+
+    friend = get_object_or_404(User, id=friend_id)
+
+    note, created = Notification.objects.get_or_create(
+        recipient=friend,
+        sender=request.user,
+        notification_type="game_invite",
+        target_id=lobby.id,
+        defaults={"is_read": False}
+    )
+
+    # Se já existia mas estava lido, reativa ele
+    if not created and note.is_read:
+        note.is_read = False
+
+        import django.utils.timezone
+        note.created_at = django.utils.timezone.now() # Atualiza a hora pro topo da lista
+        
+        note.save()
+    elif created:
+        note.is_read = False
+        note.save()
+
+    return HttpResponse(
+        '<button type="button" class="btn btn-sm btn-success rounded-pill px-3 fw-bold" disabled>'
+        '<i class="bi bi-check-lg me-1"></i> Sent!'
+        '</button>'
+    )
+
+
+def lobby_online_friends_view(request: HttpRequest, lobby_code: str):
+    lobby = get_object_or_404(LobbyGroup, code=lobby_code)
+
+    context = LobbyContext(lobby, request.user.player, invite_to_lobby(lobby))
+    return render(request, "fulabra_app/partials/online_friends_list.html", {"context": context})

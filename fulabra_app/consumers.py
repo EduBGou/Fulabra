@@ -144,6 +144,11 @@ class LobbyConsumer(WebsocketConsumer):
         self.lobby.status = LobbyGroup.LobbyStatus.PLAYING
         self.lobby.save()
 
+        Notification.objects.filter(
+            notification_type="game_invite",
+            target_id=self.lobby.id
+        ).update(is_read=True)
+
         self.game, _ = Game.objects.get_or_create(lobby=self.lobby)
         self.current_round = GameRound.objects.create(game=self.game, round_number=1)
 
@@ -314,6 +319,13 @@ class LobbyConsumer(WebsocketConsumer):
             "fulabra_app/partials/player_list.html", {"context": context}
         )
 
+        # Quando alguém entrar/sair do lobby
+        html += """
+        <span hx-swap-oob="beforeend:body">
+            <script>document.body.dispatchEvent(new Event('refreshSidebar'));</script>
+        </span>
+        """
+
         self.send(text_data=html)
 
     def player_cleanup(self, lobby_code: str, membership_id: int, timer_key: str):
@@ -347,6 +359,8 @@ class LobbyConsumer(WebsocketConsumer):
 
 
 class NotificationConsumer(WebsocketConsumer):
+    disconnect_timers: dict[str, threading.Timer] = {}
+
     def connect(self):
         self.user = self.scope["user"]
 
@@ -357,6 +371,11 @@ class NotificationConsumer(WebsocketConsumer):
                 self.group_name,
                 self.channel_name
             )
+
+            timer_key = f"offline_timer_{self.user.id}"
+            if timer_key in NotificationConsumer.disconnect_timers:
+                NotificationConsumer.disconnect_timers[timer_key].cancel()
+                del NotificationConsumer.disconnect_timers[timer_key]
 
             cache.set(f"user_online_{self.user.id}", "online", timeout=600)
 
@@ -373,9 +392,19 @@ class NotificationConsumer(WebsocketConsumer):
                 self.channel_name
             )
 
-            cache.delete(f"user_online_{self.user.id}")
+            timer_key = f"offline_timer_{self.user.id}"
+            timer = threading.Timer(3.0, self.mark_user_offline, args=[self.user])
+            NotificationConsumer.disconnect_timers[timer_key] = timer
+            timer.start()
 
-            self.broadcast_status_to_friends("offline")
+    def mark_user_offline(self, user):
+        timer_key = f"offline_timer_{user.id}"
+        if timer_key in NotificationConsumer.disconnect_timers:
+            del NotificationConsumer.disconnect_timers[timer_key]
+        
+        cache.delete(f"user_online_{self.user.id}")
+
+        self.broadcast_status_to_friends("offline")
 
     def send_notification_update(self, event):
         from .models import Notification
@@ -405,4 +434,20 @@ class NotificationConsumer(WebsocketConsumer):
             "status": status
         })
         
+        # Quando algum amigo muda o status
+        html += """
+        <span hx-swap-oob="beforeend:body">
+            <script>document.body.dispatchEvent(new Event('refreshSidebar'));</script>
+        </span>
+        """
+
+        self.send(text_data=html)
+
+    def trigger_sidebar_refresh(self, event):
+        html = """
+        <span hx-swap-oob="beforeend:body">
+            <script>document.body.dispatchEvent(new Event('refreshSidebar'));</script>
+        </span>
+        """
+
         self.send(text_data=html)

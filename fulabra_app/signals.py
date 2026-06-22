@@ -55,3 +55,11 @@ def trigger_notification_websocket(sender, instance: Notification, created, **kw
         message["notification_id"] = instance.id
 
     async_to_sync(channel_layer.group_send)(group_name, message)
+
+
+@receiver(post_delete, sender=LobbyGroup)
+def cleanup_deleted_lobby_invites(sender, instance: LobbyGroup, **kwargs):
+    Notification.objects.filter(
+        notification_type="game_invite",
+        target_id=instance.id
+    ).update(is_read=True)
