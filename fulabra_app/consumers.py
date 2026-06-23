@@ -1,19 +1,20 @@
 import threading
 import time
+
 from channels.generic.websocket import WebsocketConsumer
 from django.template.loader import render_to_string
 from django.contrib.sessions.backends.base import SessionBase
 from asgiref.sync import async_to_sync
 
-from fulabra_app.forms import GameWordForm
-
+from .forms import GameWordForm
 from .contexts import *
 from .models import *
 
 
 class LobbyConsumer(WebsocketConsumer):
     disconnect_timers: dict[str, threading.Timer] = {}
-    active_timers = {}
+    choose_word_timers = {}
+    next_round_timers = {}
 
     def remove_player_disconnection_timer(self):
         timer_key = f"{self.lobby_code}_{self.player.id}"
@@ -88,7 +89,10 @@ class LobbyConsumer(WebsocketConsumer):
 
             else:
                 context = GameFrameContext(
-                    self.lobby, self.game, self.current_round, GameWordForm(round=self.current_round)
+                    self.lobby,
+                    self.game,
+                    self.current_round,
+                    GameWordForm(round=self.current_round),
                 )
                 html = render_to_string(
                     "fulabra_app/partials/game_frame.html", {"context": context}
@@ -140,35 +144,16 @@ class LobbyConsumer(WebsocketConsumer):
         self.lobby.status = LobbyGroup.LobbyStatus.PLAYING
         self.lobby.save()
 
-        self.game = Game.objects.filter(
+        self.game, _ = Game.objects.get_or_create(
             lobby=self.lobby, category=self.category
-        ).first()
-        if not self.game:
-            self.game = Game.objects.create(lobby=self.lobby, category=self.category)
-
-        self.current_round = self.game.rounds.last()
-
-        # Change to Game.GameStatus.START
-        self.game.status = Game.GameStatus.CHOOSING
-        self.game.save()
-
-        context = GameFrameContext(
-            self.lobby, self.game, self.current_round, GameWordForm(round=self.current_round)
         )
-        html = render_to_string(
-            "fulabra_app/partials/game_frame.html", {"context": context}
-        )
-        self.group_send_html(html)
 
-        if self.lobby_code not in self.active_timers:
-            timer_thread = threading.Thread(
-                target=self.run_countdown_timer, args=(self.lobby_code, 30), daemon=True
-            )
-            self.active_timers[self.lobby_code] = timer_thread
-            timer_thread.start()
+        self.next_round()
 
     def submit_word(self, data_dict):
         self.lobby.refresh_from_db()
+        self.game = Game.objects.filter(lobby=self.lobby).first()
+        self.current_round = self.game.rounds.last()
         form = GameWordForm(data=data_dict, round=self.current_round)
 
         if form.is_valid():
@@ -236,10 +221,10 @@ class LobbyConsumer(WebsocketConsumer):
         )
         self.group_send_html(html)
 
-    def run_countdown_timer(self, lobby_code, duration):
+    def run_countdown_choose_word_timer(self, lobby_code, duration):
         """Asynchronous worker that decrements time and pushes updates to clients"""
         for time_remaining in range(duration, -1, -1):
-            if lobby_code not in self.active_timers:
+            if lobby_code not in self.choose_word_timers:
                 return
             html = render_to_string(
                 "fulabra_app/partials/round_countdown.html",
@@ -249,12 +234,11 @@ class LobbyConsumer(WebsocketConsumer):
             time.sleep(1)
 
         time.sleep(1.5)
-        self.end_round()
+        self.end_round(True)
 
-    def end_round(self):
-
-        if self.lobby_code in self.active_timers:
-            del self.active_timers[self.lobby_code]
+    def end_round(self, verify: bool = False):
+        if self.lobby_code in self.choose_word_timers:
+            del self.choose_word_timers[self.lobby_code]
 
         if self.game.status != Game.GameStatus.CHOOSING:
             return
@@ -263,7 +247,7 @@ class LobbyConsumer(WebsocketConsumer):
         self.game.status = Game.GameStatus.RESULT
         self.game.save()
 
-        if self.player != self.lobby.leader:
+        if self.player != self.lobby.leader and verify:
             return
 
         self.current_round = self.game.rounds.last()
@@ -296,6 +280,58 @@ class LobbyConsumer(WebsocketConsumer):
             {"context": RoundResultContext(submissions)},
         )
         self.group_send_html(html)
+
+        if self.lobby_code not in self.next_round_timers:
+            timer_thread = threading.Thread(
+                target=self.run_next_round_timer,
+                args=[5],
+                daemon=True,
+            )
+            self.next_round_timers[self.lobby_code] = timer_thread
+            timer_thread.start()
+
+    def run_next_round_timer(self, duration):
+        time.sleep(duration)
+        self.next_round()
+
+    def next_round(self):
+        if self.lobby_code in self.next_round_timers:
+            del self.next_round_timers[self.lobby_code]
+
+        self.game.refresh_from_db()
+
+        if self.game.rounds.last():
+            self.current_round = self.game.rounds.last()
+            next_round_number = self.current_round.round_number + 1
+        else:
+            next_round_number = 1
+
+        self.current_round = GameRound.objects.create(
+            game=self.game, round_number=next_round_number
+        )
+
+        self.game.status = Game.GameStatus.CHOOSING
+        self.game.save()
+
+        context = GameFrameContext(
+            self.lobby,
+            self.game,
+            self.current_round,
+            GameWordForm(round=self.current_round),
+        )
+        html = render_to_string(
+            "fulabra_app/partials/game_frame.html", {"context": context}
+        )
+        self.group_send_html(html)
+
+        if self.lobby_code not in self.choose_word_timers:
+            timer_thread = threading.Thread(
+                target=self.run_countdown_choose_word_timer,
+                args=(self.lobby_code, 30),
+                daemon=True,
+            )
+            self.choose_word_timers[self.lobby_code] = timer_thread
+            timer_thread.start()
 
     def group_send_html(self, html):
         async_to_sync(self.channel_layer.group_send)(
