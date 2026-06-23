@@ -27,13 +27,12 @@ def set_player_preset_avatar(
 
 def lobby_is_full(lobby: LobbyGroup, player: Player = None) -> bool:
     max_capacity = 3
-    if player and lobby.memberships.filter(player=player).exists():
+    if player and lobby.lobby_memberships.filter(player=player).exists():
         return False
-    return lobby.memberships.count() >= max_capacity
+    return lobby.lobby_memberships.count() >= max_capacity
 
 
 def invite_to_lobby(lobby: LobbyGroup) -> str:
     path = reverse("lobby_invite", kwargs={"lobby_code": lobby.code})
     base_url = settings.BACKEND_BASE_URL.rstrip("/")
     return f"{base_url}{path}"
-

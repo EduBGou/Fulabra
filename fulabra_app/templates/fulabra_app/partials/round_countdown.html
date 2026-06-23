@@ -1,0 +1,13 @@
+<div id="round-countdown" hx-swap-oob="true" class="fs-1 fw-extrabold text-danger col" data-seconds="{{ seconds }}">
+  {{ seconds }}s{% if seconds == 0 %}
+    <script>
+      ;(function () {
+        const wordForm = document.querySelector('form[ws-send]')
+        const wordIpt = document.querySelector('#action')
+        if (wordIpt.value === 'submit_word') {
+          wordForm.requestSubmit()
+        }
+      })()
+    </script>
+  {% endif %}
+</div>

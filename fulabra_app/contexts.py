@@ -1,6 +1,9 @@
 from dataclasses import dataclass
 from typing import List
-from .models import LobbyGroup, LobbyPlayer, Player, User
+
+from fulabra_app.forms import GameWordForm
+from .models import *
+
 
 @dataclass
 class RegisterContext:
@@ -21,7 +24,7 @@ class PlayerListContext:
     def lobby_players(self) -> List[Player]:
         return [
             member.player
-            for member in self.lobby_player_membership.lobby.memberships.all()
+            for member in self.lobby_player_membership.lobby.lobby_memberships.all()
         ]
 
     @property
@@ -30,7 +33,7 @@ class PlayerListContext:
 
     @property
     def players_count(self) -> int:
-        return self.lobby_player_membership.lobby.memberships.count()
+        return self.lobby_player_membership.lobby.lobby_memberships.count()
 
     @property
     def user_is_leader(self) -> bool:
@@ -51,3 +54,61 @@ class LobbyContext:
     player: Player
     invite: str
     error_message: str = None
+
+    @property
+    def current_category(self) -> Category:
+        return Category.objects.first()
+
+    @property
+    def categories(self) -> List[Category]:
+        return Category.objects.all()
+
+
+@dataclass
+class GameFrameContext:
+    lobby: LobbyGroup
+    game: Game
+    round: GameRound
+    form: GameWordForm
+
+    @property
+    def available_words(self) -> List[Word]:
+        return Word.objects.filter(category=self.lobby.game.category).all()
+
+
+@dataclass
+class RoundResultContext:
+    submissions: SubmittedWord
+
+    @property
+    def round_result_list(self) -> List[RoundResultElement]:
+        list: List[RoundResultElement] = []
+
+        for sub in self.submissions:
+            game_player = GamePlayer.objects.filter(
+                game=sub.round.game, player=sub.player
+            ).first()
+            if game_player:
+                list.append(RoundResultElement(sub.player, sub.word, game_player.score))
+            else:
+                print(
+                    f"GamePlayer with player={sub.player.nickname} and game.id={sub.round.game.id} there is not exits!"
+                )
+
+        return list
+
+
+@dataclass
+class RoundResultElement:
+    player: Player
+    word: Word
+    score: int
+
+
+@dataclass
+class CategoryContext:
+    current_category: Category
+
+    @property
+    def categories(self) -> List[Category]:
+        return Category.objects.all()
