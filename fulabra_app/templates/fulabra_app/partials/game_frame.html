@@ -3,13 +3,15 @@
   <h1>The Match Has Begun!</h1>
   <p>Lobby Room: {{ context.lobby.code }}</p>
   <span class="badge bg-warning text-dark mb-2">Round {{ context.round.round_number }}</span>
+  <span>Category: {{ context.game.category }}</span>
   {% include 'fulabra_app/partials/word_form.html' %}
   <div id="round-countdown"></div>
 
   <datalist id="word-list" class="custom-dropdown shadow rounded-3 d-none">
     {% for word in context.available_words %}
-      <option class="dropdown-item-row px-3 py-2 text-start transition-all">{{ word.label }}</option>
+      <option>{{ word.label }}</option>
     {% endfor %}
   </datalist>
 </div>
 <div id="online-friends-div" hx-swap-oob="true"></div>
+  

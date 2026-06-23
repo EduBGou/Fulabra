@@ -20,6 +20,23 @@
               <button id="btn-invite" class="btn btn-outline-secondary rounded-pill px-4 btn-sm fw-bold transition-all" data-invite-link="{{ context.invite }}">Copy Invite Link</button>
             </div>
 
+            <div id="category-container">
+              {% if user.player == context.current_lobby.leader %}
+                <label for="category">Category:</label>
+                <select id="category" name="category" ws-send>
+                  {% for c in context.categories %}
+                    {% if c == context.current_category %}
+                      <option value="{{ c.name }}" selected>{{ c }}</option>
+                    {% else %}
+                      <option value="{{ c.name }}">{{ c }}</option>
+                    {% endif %}
+                  {% endfor %}
+                </select>
+              {% else %}
+                {% include 'fulabra_app/partials/category.html' %}
+              {% endif %}
+            </div>
+
             <div id="player-list" class="d-flex flex-column gap-3 my-auto py-4 text-center">
               <div class="spinner-border text-secondary mx-auto d-flex text-center" role="status">
                 <span class="visually-hidden"></span>
@@ -75,6 +92,7 @@
 
   <script>
     const inviteBtn = document.querySelector('#btn-invite')
+    
     if (inviteBtn) {
       const originalText = inviteBtn.innerHTML
       inviteBtn.addEventListener('click', function () {

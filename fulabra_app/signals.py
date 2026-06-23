@@ -18,6 +18,12 @@ def delete_guest_player_on_lobby_leave(sender, instance: LobbyGroup, **kwargs):
         instance.code = instance.generate_unique_code()
 
 
+# @receiver(post_save, sender=Game)
+# def create_game(sender, instance: Game, created: bool, **kargs):
+#     if created:
+#         GameRound.objects.create(game=instance, round_number=0)
+
+
 @receiver(post_delete, sender=LobbyPlayer)
 def delete_guest_player_on_lobby_leave(sender, instance: LobbyPlayer, **kwargs):
     player = instance.player
