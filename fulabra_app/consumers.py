@@ -25,7 +25,7 @@ class LobbyConsumer(WebsocketConsumer):
         self.user: User = self.scope["user"]
         self.session: SessionBase = self.scope.get("session", {})
         self.lobby_code: str = self.scope["url_route"]["kwargs"]["lobby_code"]
-
+        self.category = Category.objects.first()
         self.lobby = LobbyGroup.objects.filter(code=self.lobby_code).first()
         self.lobby_player_membership: LobbyPlayer = None
 
@@ -88,7 +88,7 @@ class LobbyConsumer(WebsocketConsumer):
 
             else:
                 context = GameFrameContext(
-                    self.lobby, self.current_round, GameWordForm()
+                    self.lobby, self.game, self.current_round, GameWordForm(round=self.current_round)
                 )
                 html = render_to_string(
                     "fulabra_app/partials/game_frame.html", {"context": context}
@@ -140,16 +140,21 @@ class LobbyConsumer(WebsocketConsumer):
         self.lobby.status = LobbyGroup.LobbyStatus.PLAYING
         self.lobby.save()
 
-        self.game, _ = Game.objects.get_or_create(
+        self.game = Game.objects.filter(
             lobby=self.lobby, category=self.category
-        )
+        ).first()
+        if not self.game:
+            self.game = Game.objects.create(lobby=self.lobby, category=self.category)
+
         self.current_round = self.game.rounds.last()
 
         # Change to Game.GameStatus.START
         self.game.status = Game.GameStatus.CHOOSING
         self.game.save()
 
-        context = GameFrameContext(self.lobby, self.current_round, GameWordForm())
+        context = GameFrameContext(
+            self.lobby, self.game, self.current_round, GameWordForm(round=self.current_round)
+        )
         html = render_to_string(
             "fulabra_app/partials/game_frame.html", {"context": context}
         )
@@ -164,7 +169,7 @@ class LobbyConsumer(WebsocketConsumer):
 
     def submit_word(self, data_dict):
         self.lobby.refresh_from_db()
-        form = GameWordForm(data=data_dict)
+        form = GameWordForm(data=data_dict, round=self.current_round)
 
         if form.is_valid():
             word_obj: Word = form.cleaned_data["word"]
@@ -173,6 +178,7 @@ class LobbyConsumer(WebsocketConsumer):
             self.current_round = self.game.rounds.last()
 
             print(f"{self.player.nickname} -> submit: {word_obj.label}")
+
             if not SubmittedWord.objects.filter(
                 round=self.current_round, player=self.player, word=word_obj
             ).first():
@@ -187,12 +193,13 @@ class LobbyConsumer(WebsocketConsumer):
         if self.current_round.submitted_words.count() >= 3:
             self.end_round()
 
-        html = render_to_string(
-            "fulabra_app/partials/word_form.html",
-            {"context": {"form": form, "submitted": form.is_valid()}},
-        )
+        else:
+            html = render_to_string(
+                "fulabra_app/partials/word_form.html",
+                {"context": {"form": form, "submitted": form.is_valid()}},
+            )
 
-        self.send(text_data=html)
+            self.send(text_data=html)
 
     def cancel_submit(self):
         self.lobby.refresh_from_db()
@@ -200,7 +207,7 @@ class LobbyConsumer(WebsocketConsumer):
             round=self.current_round, player=self.player
         ).first()
 
-        form = GameWordForm()
+        form = GameWordForm(round=self.current_round)
         form.data["action"] = "submit_word"
 
         if submitted_word:

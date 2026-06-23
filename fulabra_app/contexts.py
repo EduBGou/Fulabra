@@ -67,6 +67,7 @@ class LobbyContext:
 @dataclass
 class GameFrameContext:
     lobby: LobbyGroup
+    game: Game
     round: GameRound
     form: GameWordForm
 
