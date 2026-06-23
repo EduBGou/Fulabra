@@ -12,7 +12,7 @@
         <div class="d-flex justify-content-between align-items-center">
           
           <div>
-            <span class="badge bg-secondary mb-1 rounded-2 small">{{ note.get_notification_type_display }}</span>
+            <span class="badge bg-warning mb-1 rounded-2 small">{{ note.get_notification_type_display }}</span>
             <p class="mb-0 fw-medium">
               {% if note.notification_type == 'friend_request' %}
                 <a href="{% url "profile" note.sender.username %}" class="text-decoration-none">{{ note.sender.username }}</a> sent you a friend request!
