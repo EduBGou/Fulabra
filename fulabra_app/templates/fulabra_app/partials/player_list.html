@@ -8,18 +8,20 @@
   <div class="row row-cols-1 row-cols-md-3 g-3 justify-content-center mb-4">
     {% for p in context.lobby_players %}
       <div class="col">
-        <div class="p-3 rounded-3 text-center d-flex flex-column align-items-center gap-2 position-relative px-2">
-          <div class="p-2 d-flex flex-column align-items-center" style="height: 5px;">
-          {% if p == context.lobby_leader %}
-              <span class="alert-warning position-absolute translate-middle badge rounded-pill font-monospace small px-2">
-                HOST
-              </span>
-              {% endif %}
-            </div>
-          <img src="{{ p.avatar.url|default:'avatars/default_avatar.png' }}" 
-               alt="Avatar" class="rounded-circle" 
-               style="width: 60px; height: 60px; object-fit: cover;">
-          <div class="fw-bold text-truncate w-100">{{ p.nickname }}</div>
+        <div div class="p-3 rounded-3 text-center d-flex flex-column align-items-center gap-2 position-relative px-2">
+
+            {% if p == context.lobby_leader %}
+                <span class="alert-warning position-absolute top-0 start-50 translate-middle badge rounded-pill font-monospace small px-2 z-3 mt-n2" style="z-index: 10;">
+                  HOST
+                </span>
+                {% endif %}
+
+            <img src="{{ p.avatar.url|default:'avatars/default_avatar.png' }}" 
+                alt="Avatar" class="rounded-circle" 
+                style="width: 60px; height: 60px; object-fit: cover;">
+
+            <div class="fw-bold text-truncate w-100">{{ p.nickname }}</div>
+
         </div>
       </div>
     {% endfor %}
