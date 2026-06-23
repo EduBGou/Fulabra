@@ -236,6 +236,44 @@ class LobbyConsumer(WebsocketConsumer):
         time.sleep(1.5)
         self.end_round(True)
 
+    def perfom_scoring(
+        self, submissions: List[SubmittedWord]
+    ) -> List[RoundResultElement]:
+        words = [sub.word for sub in submissions if sub.word]
+        word_frequencies: dict[Word, int] = {}
+        results: List[RoundResultElement] = []
+
+        for w in words:
+            if w in word_frequencies.keys():
+                word_frequencies[w] += 1
+            else:
+                word_frequencies[w] = 1
+
+        for sub in submissions:
+            game_player, _ = GamePlayer.objects.get_or_create(
+                game=self.game, player=sub.player
+            )
+
+            if word_frequencies[sub.word] == 2:
+                game_player.score += 1
+                game_player.save()
+                results.append(
+                    RoundResultElement(sub.player, sub.word, game_player.score, "earns")
+                )
+
+            elif word_frequencies[sub.word] == 3 and game_player.score > 0:
+                game_player.score -= 1
+                game_player.save()
+                results.append(
+                    RoundResultElement(sub.player, sub.word, game_player.score, "loses")
+                )
+            else:
+                results.append(
+                    RoundResultElement(sub.player, sub.word, game_player.score)
+                )
+
+        return results
+
     def end_round(self, verify: bool = False):
         if self.lobby_code in self.choose_word_timers:
             del self.choose_word_timers[self.lobby_code]
@@ -252,32 +290,11 @@ class LobbyConsumer(WebsocketConsumer):
 
         self.current_round = self.game.rounds.last()
         submissions = self.get_submissions()
-
-        words = [sub.word for sub in submissions if sub.word]
-        word_frequencies: dict[Word, int] = {}
-
-        for w in words:
-            if w in word_frequencies.keys():
-                word_frequencies[w] += 1
-            else:
-                word_frequencies[w] = 1
-
-        for sub in submissions:
-            game_player, _ = GamePlayer.objects.get_or_create(
-                game=self.game, player=sub.player
-            )
-
-            if word_frequencies[sub.word] == 2:
-                game_player.score += 1
-                game_player.save()
-
-            if word_frequencies[sub.word] == 3 and game_player.score > 0:
-                game_player.score -= 1
-                game_player.save()
+        results = self.perfom_scoring(submissions)
 
         html = render_to_string(
             "fulabra_app/partials/round_result.html",
-            {"context": RoundResultContext(submissions)},
+            {"context": RoundResultContext(results)},
         )
         self.group_send_html(html)
 

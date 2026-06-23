@@ -78,32 +78,14 @@ class GameFrameContext:
 
 @dataclass
 class RoundResultContext:
-    submissions: SubmittedWord
-
-    @property
-    def round_result_list(self) -> List[RoundResultElement]:
-        list: List[RoundResultElement] = []
-
-        for sub in self.submissions:
-            game_player = GamePlayer.objects.filter(
-                game=sub.round.game, player=sub.player
-            ).first()
-            if game_player:
-                list.append(RoundResultElement(sub.player, sub.word, game_player.score))
-            else:
-                print(
-                    f"GamePlayer with player={sub.player.nickname} and game.id={sub.round.game.id} there is not exits!"
-                )
-
-        return list
-
+    round_result_list: List[RoundResultElement]
 
 @dataclass
 class RoundResultElement:
     player: Player
     word: Word
     score: int
-
+    status: str = ""
 
 @dataclass
 class CategoryContext:

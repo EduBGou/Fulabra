@@ -1,6 +1,14 @@
 <div id="game-container" hx-swap-oob="innerHTML">
   {% for res in context.round_result_list %}
-    <div>{{res.player.nickname}} sent {{res.word.label}}, current pnts: {{res.score}}</div>
+    <div>
+      {% if res.status == 'earns' %}
+        <strong>{{ res.player.nickname }}</strong> sent <span class="text-success">{{ res.word.label }}</span>, current pnts: {{ res.score }} <small class="text-success">(+1)</small>
+      {% elif res.status == 'loses' %}
+        <strong>{{ res.player.nickname }}</strong> sent <span class="text-danger">{{ res.word.label }}</span>, current pnts: {{ res.score }} <small class="text-danger">(-1)</small>
+      {% else %}
+        <strong>{{ res.player.nickname }}</strong> sent <span>{{ res.word.label }}</span>, current pnts: {{ res.score }}
+      {% endif %}
+    </div>
   {% endfor %}
 </div>
 <div id="online-friends-div" hx-swap-oob="true"></div>
