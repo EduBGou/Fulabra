@@ -19,7 +19,7 @@
             </p>
             <p class="mb-0 small text-muted fw-medium">
               Don't have an account?  
-              <a href="{% url 'register' %}" class="text-decoration-none text-primary fw-semibold ms-1">Register here</a>
+              <a href="{% url 'register' %}{% if next_url %}?next={{ next_url }}{% endif %}" class="text-decoration-none text-primary fw-semibold ms-1">Register here</a>
             </p>
           </div>
         </div>

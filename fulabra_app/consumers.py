@@ -1,14 +1,17 @@
 import threading
+import json
 import time
 
 from channels.generic.websocket import WebsocketConsumer
 from django.template.loader import render_to_string
 from django.contrib.sessions.backends.base import SessionBase
+from django.core.cache import cache
 from asgiref.sync import async_to_sync
 
 from .forms import GameWordForm
 from .contexts import *
 from .models import *
+from .utils import broadcast_user_status
 
 
 class LobbyConsumer(WebsocketConsumer):
@@ -117,6 +120,10 @@ class LobbyConsumer(WebsocketConsumer):
             self.disconnect_timers[timer_key] = cleanup_timer
             cleanup_timer.start()
 
+        if self.user.is_authenticated:
+            cache.set(f"user_online_{self.user.id}", "online", timeout=600)
+            broadcast_user_status(self.user, "online")
+
     def receive(self, text_data=None, bytes_data=None):
         import json
 
@@ -144,9 +151,23 @@ class LobbyConsumer(WebsocketConsumer):
         self.lobby.status = LobbyGroup.LobbyStatus.PLAYING
         self.lobby.save()
 
+        Notification.objects.filter(
+            notification_type="game_invite",
+            target_id=self.lobby.id
+        ).update(is_read=True)
+
         self.game, _ = Game.objects.get_or_create(
             lobby=self.lobby, category=self.category
         )
+
+        # Change to Game.GameStatus.START
+        self.game.status = Game.GameStatus.CHOOSING
+        self.game.save()
+
+        for member in self.lobby.lobby_memberships.all():
+            if member.player.user:
+                cache.set(f"user_online_{member.player.user.id}", "in_game", timeout=600)
+                broadcast_user_status(member.player.user, "in_game")
 
         self.next_round()
 
@@ -363,6 +384,13 @@ class LobbyConsumer(WebsocketConsumer):
             "fulabra_app/partials/player_list.html", {"context": context}
         )
 
+        # Quando alguém entrar/sair do lobby
+        html += """
+        <span hx-swap-oob="beforeend:body">
+            <script>document.body.dispatchEvent(new Event('refreshSidebar'));</script>
+        </span>
+        """
+
         self.send(text_data=html)
 
     def player_cleanup(self, lobby_code: str, membership_id: int, timer_key: str):
@@ -392,4 +420,99 @@ class LobbyConsumer(WebsocketConsumer):
         html = render_to_string(
             "fulabra_app/partials/error_message.html", {"context": context}
         )
+        self.send(text_data=html)
+
+
+class NotificationConsumer(WebsocketConsumer):
+    disconnect_timers: dict[str, threading.Timer] = {}
+
+    def connect(self):
+        self.user = self.scope["user"]
+
+        if self.user.is_authenticated:
+            self.group_name = f"notifications_{self.user.username}"
+
+            async_to_sync(self.channel_layer.group_add)(
+                self.group_name,
+                self.channel_name
+            )
+
+            timer_key = f"offline_timer_{self.user.id}"
+            if timer_key in NotificationConsumer.disconnect_timers:
+                NotificationConsumer.disconnect_timers[timer_key].cancel()
+                del NotificationConsumer.disconnect_timers[timer_key]
+
+            cache.set(f"user_online_{self.user.id}", "online", timeout=600)
+
+            self.broadcast_status_to_friends("online")
+
+            self.accept()
+        else: 
+            self.close()
+
+    def disconnect(self, code):
+        if self.user.is_authenticated:
+            async_to_sync(self.channel_layer.group_discard)(
+                self.group_name,
+                self.channel_name
+            )
+
+            timer_key = f"offline_timer_{self.user.id}"
+            timer = threading.Timer(3.0, self.mark_user_offline, args=[self.user])
+            NotificationConsumer.disconnect_timers[timer_key] = timer
+            timer.start()
+
+    def mark_user_offline(self, user):
+        timer_key = f"offline_timer_{user.id}"
+        if timer_key in NotificationConsumer.disconnect_timers:
+            del NotificationConsumer.disconnect_timers[timer_key]
+        
+        cache.delete(f"user_online_{self.user.id}")
+
+        self.broadcast_status_to_friends("offline")
+
+    def send_notification_update(self, event):
+        from .models import Notification
+        unread_count = Notification.objects.filter(recipient=self.user, is_read=False).count()
+
+        context = {"unread_notifications_count": unread_count}
+        html = render_to_string("fulabra_app/partials/notification_badge.html", context)
+
+        notification_id = event.get("notification_id")
+        if notification_id:
+            note = Notification.objects.filter(id=notification_id).first()
+            if note:
+                card_html = render_to_string("fulabra_app/partials/notification_card.html", {"note": note})
+                html += card_html
+                
+        self.send(text_data=html)
+
+    def broadcast_status_to_friends(self, status):
+        broadcast_user_status(self.user, status)
+    
+    def send_status_update(self, event):
+        friend_username = event["friend_username"]
+        status = event["status"]
+
+        html = render_to_string("fulabra_app/partials/friend_status_dot.html", {
+            "friend_username": friend_username,
+            "status": status
+        })
+        
+        # Quando algum amigo muda o status
+        html += """
+        <span hx-swap-oob="beforeend:body">
+            <script>document.body.dispatchEvent(new Event('refreshSidebar'));</script>
+        </span>
+        """
+
+        self.send(text_data=html)
+
+    def trigger_sidebar_refresh(self, event):
+        html = """
+        <span hx-swap-oob="beforeend:body">
+            <script>document.body.dispatchEvent(new Event('refreshSidebar'));</script>
+        </span>
+        """
+
         self.send(text_data=html)
