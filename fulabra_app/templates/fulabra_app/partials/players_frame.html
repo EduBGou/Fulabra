@@ -1,0 +1,24 @@
+<div id="players-frame" class="position-fixed top-0 end-0 m-4 p-3 bg-white text-dark rounded-4 shadow-sm border border-light" style="z-index: 1050; min-width: 240px; backdrop-filter: blur(8px);">
+  <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom border-light">
+    <span class="text-uppercase tracking-wider text-muted fw-bold small">Scoreboard</span>
+    {% if context.round %}
+      <span class="badge bg-warning text-dark px-2.5 py-1.5 rounded-3 fw-bold" style="font-size: 0.8rem;">Round {{ context.round.round_number }}</span>
+    {% endif %}
+  </div>
+
+  {% for res in context.round_result_list %}
+    <div class="d-flex align-items-center justify-content-between py-2 rounded-2 transition-all">
+      <div class="d-flex align-items-center">
+        <div class="position-relative">
+          <img src="{{ res.player.avatar.url }}" class="rounded-circle border border-2 border-white shadow-sm" style="width: 36px; height: 36px; object-fit: cover;" />
+        </div>
+        <span class="fw-semibold text-secondary" style="font-size: 0.95rem;">&nbsp;{{ res.player.nickname }}</span>
+      </div>
+      <span class="badge bg-light text-dark border border-light font-monospace px-2 py-1.5 rounded-3 fw-bold" style="font-size: 0.85rem;">{{ res.score }} pts</span>
+    </div>
+  {% empty %}
+    <div class="text-center py-3">
+      <small class="text-muted">Waiting for players...</small>
+    </div>
+  {% endfor %}
+</div>

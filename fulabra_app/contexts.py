@@ -72,6 +72,27 @@ class GameFrameContext:
     form: GameWordForm
 
     @property
+    def round_result_list(self) -> List[RoundResultElement]:
+        previous_round = self.game.rounds.filter(
+            round_number=self.round.round_number - 1
+        ).first()
+        if previous_round:
+            submissions = previous_round.submitted_words.all()
+            return [
+                RoundResultElement(
+                    sub.player,
+                    sub.word,
+                    self.game.game_memberships.filter(player=sub.player).first().score,
+                )
+                for sub in submissions
+            ]
+
+        return [
+            RoundResultElement(m.player, None, m.score)
+            for m in self.game.game_memberships.all()
+        ]
+
+    @property
     def available_words(self) -> List[Word]:
         return Word.objects.filter(category=self.lobby.game.category).all()
 
@@ -80,12 +101,14 @@ class GameFrameContext:
 class RoundResultContext:
     round_result_list: List[RoundResultElement]
 
+
 @dataclass
 class RoundResultElement:
     player: Player
     word: Word
     score: int
     status: str = ""
+
 
 @dataclass
 class CategoryContext:

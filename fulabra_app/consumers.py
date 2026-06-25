@@ -144,9 +144,15 @@ class LobbyConsumer(WebsocketConsumer):
         self.lobby.status = LobbyGroup.LobbyStatus.PLAYING
         self.lobby.save()
 
-        self.game, _ = Game.objects.get_or_create(
+        self.game, created = Game.objects.get_or_create(
             lobby=self.lobby, category=self.category
         )
+
+        if created:
+            for membership in self.lobby.lobby_memberships.all():
+                GamePlayer.objects.get_or_create(
+                    game=self.game, player=membership.player
+                )
 
         self.next_round()
 
