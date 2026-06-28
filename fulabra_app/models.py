@@ -172,6 +172,8 @@ class Word(models.Model):
     category = models.ForeignKey(
         Category,
         related_name=Category.words.__name__,
+        blank=True,
+        null=True,
         on_delete=models.CASCADE,
     )
 
@@ -191,9 +193,8 @@ class Game(models.Model):
         RESULT = "round_result", _("Showing the round result")
         FINISHED = "finished", _("Game Over")
 
-    def get_default_category():
-        category, _ = Category.objects.get_or_create(name="Profissao")
-        return category.id
+    def get_default_category() -> Category:
+        return Category.objects.first()
 
     lobby = models.OneToOneField(
         LobbyGroup, related_name=LobbyGroup.game.__name__, on_delete=models.CASCADE
@@ -230,6 +231,11 @@ class GameRound(models.Model):
 
 
 class SubmittedWord(models.Model):
+
+    def get_default_word():
+        word, _ = Word.objects.get_or_create(label="-")
+        return word
+
     round = models.ForeignKey(
         GameRound,
         related_name=GameRound.submitted_words.__name__,
@@ -239,7 +245,10 @@ class SubmittedWord(models.Model):
         Player, related_name=Player.submitted_words.__name__, on_delete=models.CASCADE
     )
     word = models.ForeignKey(
-        Word, related_name=Word.submitts.__name__, on_delete=models.CASCADE
+        Word,
+        related_name=Word.submitts.__name__,
+        default=get_default_word,
+        on_delete=models.CASCADE,
     )
 
     class Meta:

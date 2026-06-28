@@ -2,14 +2,27 @@
   {% for res in context.round_result_list %}
     <div>
       {% if res.status == 'earns' %}
-        <strong>{{ res.player.nickname }}</strong> sent <span class="text-success">{{ res.word.label }}</span>, current pnts: {{ res.score }} <small class="text-success">(+1)</small>
+        <strong>{{ res.player.nickname }}</strong> sent <span class="text-success">{{ res.word }}</span>, current pnts: {{ res.score }} <small class="text-success">(+1)</small>
       {% elif res.status == 'loses' %}
-        <strong>{{ res.player.nickname }}</strong> sent <span class="text-danger">{{ res.word.label }}</span>, current pnts: {{ res.score }} <small class="text-danger">(-1)</small>
+        <strong>{{ res.player.nickname }}</strong> sent <span class="text-danger">{{ res.word }}</span>, current pnts: {{ res.score }} <small class="text-danger">(-1)</small>
       {% else %}
-        <strong>{{ res.player.nickname }}</strong> sent <span>{{ res.word.label }}</span>, current pnts: {{ res.score }}
+        <strong>{{ res.player.nickname }}</strong> sent <span>{{ res.word|default:"-" }}</span>, current pnts: {{ res.score }}
+      {% endif %}
+
+      {% if res.score >= 3 %}
+        <strong class="text-warning">{{ res.player.nickname }}</strong> won!
       {% endif %}
     </div>
   {% endfor %}
+  {% if context.game_over %}
+  <button type="button"
+        class="btn btn-primary rounded-pill fw-extrabold"
+        hx-vals='{"action":"return_lobby"}'
+        ws-send>
+          Return to Lobby
+        </button>
+  {% endif %}
 </div>
+
 <div id="word-error" hx-swap-oob="innerHTML"></div>
-{% include "fulabra_app/partials/players_frame.html" %}
+{% include 'fulabra_app/partials/players_frame.html' %}

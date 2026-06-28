@@ -100,6 +100,7 @@ class GameFrameContext:
 @dataclass
 class RoundResultContext:
     round_result_list: List[RoundResultElement]
+    game_over: bool = False
 
 
 @dataclass
@@ -117,3 +118,10 @@ class CategoryContext:
     @property
     def categories(self) -> List[Category]:
         return Category.objects.all()
+
+
+@dataclass
+class WordFormContext:
+    form: GameWordForm
+    submitted: bool = False
+    submission_count: int = 0

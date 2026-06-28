@@ -9,8 +9,16 @@
       <button type="submit" class="btn btn-lg btn-success px-4 fw-bold" style="min-width: 140px;">Confirm</button>
     {% endif %}
   </div>
-
-  <div id="word-error" class="text-danger small d-flex justify-content-center align-items-center" hx-swap-oob="true">
-    {% if context.form.word.errors %}{{ context.form.word.errors.0 }}{% else %}&nbsp;{% endif %}
+  <div class="d-flex justify-content-between align-items-center w-100">
+    <div id="word-error" class="text-danger small" hx-swap-oob="true">
+      {% if context.form.word.errors %}
+        {{ context.form.word.errors.0 }}
+      {% else %}
+        &nbsp;
+      {% endif %}
+    </div>
+    <div>
+      <span>{{ context.submission_count|default:'0' }}/3</span>
+    </div>
   </div>
 </form>

@@ -2,7 +2,7 @@
 <div id="game-container" hx-swap-oob="innerHTML">
   <div class="d-flex flex-column align-items-center text-center justify-content-between py-1 position-relative">
     {% if context.round.round_number >= 2 %}
-      <p>These were the words from the final round...</p>
+      <p>These were the words from the last round...</p>
       <div class="row row-cols-3 justify-content-center g-3 w-100 max-width-md my-3">
         {% for res in context.round_result_list %}
           <div class="col">
@@ -49,6 +49,7 @@
 </div>
 
 {% include 'fulabra_app/partials/players_frame.html' %}
+
 <div id="title-div" class="d-flex justify-content-center gap-2 align-items-center" hx-swap-oob="true">
   <h1 class="display-4 fw-extrabold tracking-tight text-dark mb-1">Fulabra</h1>
 </div>
