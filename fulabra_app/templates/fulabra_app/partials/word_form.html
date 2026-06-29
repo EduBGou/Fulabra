@@ -10,6 +10,7 @@
     {% endif %}
   </div>
   <div class="d-flex justify-content-between align-items-center w-100">
+    
     <div id="word-error" class="text-danger small" hx-swap-oob="true">
       {% if context.form.word.errors %}
         {{ context.form.word.errors.0 }}
@@ -17,8 +18,8 @@
         &nbsp;
       {% endif %}
     </div>
-    <div>
-      <span>{{ context.submission_count|default:'0' }}/3</span>
-    </div>
+
+    {% include 'fulabra_app/partials/submission_count.html' %}
+
   </div>
 </form>

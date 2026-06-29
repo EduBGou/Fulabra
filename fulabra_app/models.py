@@ -21,6 +21,10 @@ class User(AbstractUser):
     def player(self) -> Player:
         return getattr(self, User.player.__name__).first()
 
+    @property
+    def games_won(self) -> QuerySet[Game]:
+        return getattr(self, Player.games_won.__name__).all()
+
 
 class Player(models.Model):
     user = models.OneToOneField(
@@ -49,12 +53,12 @@ class Player(models.Model):
         return getattr(self, Player.lobby_membership.__name__).first()
 
     @property
-    def game_membership(self) -> GamePlayer:
-        return getattr(self, Player.game_membership.__name__).first()
+    def game_membership(self) -> QuerySet[GamePlayer]:
+        return getattr(self, Player.game_membership.__name__).all()
 
     @property
     def submitted_words(self) -> QuerySet[SubmittedWord]:
-        return getattr(self, Player.submitted_words.__name__).first()
+        return getattr(self, Player.submitted_words.__name__).all()
 
     def __str__(self):
         return f"{self.nickname}"
@@ -92,7 +96,7 @@ class LobbyGroup(models.Model):
 
     @property
     def game(self) -> Game:
-        return getattr(self, LobbyGroup.game.__name__).all()
+        return getattr(self, LobbyGroup.game.__name__).first()
 
     def generate_unique_code(self) -> str:
         """Helper method to generate a unique lobby code"""
@@ -196,8 +200,12 @@ class Game(models.Model):
     def get_default_category() -> Category:
         return Category.objects.first()
 
-    lobby = models.OneToOneField(
-        LobbyGroup, related_name=LobbyGroup.game.__name__, on_delete=models.CASCADE
+    lobby = models.ForeignKey(
+        LobbyGroup,
+        related_name=LobbyGroup.game.__name__,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
     )
     status = models.CharField(
         max_length=20, choices=GameStatus.choices, default=GameStatus.START
@@ -208,6 +216,10 @@ class Game(models.Model):
         related_name=Category.games.__name__,
         on_delete=models.CASCADE,
         default=get_default_category,
+    )
+
+    winners = models.ManyToManyField(
+        User, related_name=User.games_won.__name__, blank=True
     )
 
     @property
@@ -259,7 +271,11 @@ class GamePlayer(models.Model):
     game = models.ForeignKey(
         Game, related_name=Game.game_memberships.__name__, on_delete=models.CASCADE
     )
-    player = models.OneToOneField(
+
+    player = models.ForeignKey(
         Player, related_name=Player.game_membership.__name__, on_delete=models.CASCADE
     )
     score = models.IntegerField(default=0)
+
+    class Meta:
+        unique_together = ("game", "player")

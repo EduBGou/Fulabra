@@ -94,13 +94,12 @@ class GameFrameContext:
 
     @property
     def available_words(self) -> List[Word]:
-        return Word.objects.filter(category=self.lobby.game.category).all()
+        return Word.objects.filter(category=self.game.category)
 
 
 @dataclass
 class RoundResultContext:
     round_result_list: List[RoundResultElement]
-    game_over: bool = False
 
 
 @dataclass

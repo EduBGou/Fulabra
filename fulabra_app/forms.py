@@ -147,7 +147,9 @@ class GameWordForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         self.current_round: GameRound = kwargs.pop("round", None)
+        word = kwargs.pop("word", "")
         super().__init__(*args, **kwargs)
+        self.fields["word"].initial = word
 
     def clean_word(self):
         word_label: str = self.cleaned_data.get("word")
@@ -157,7 +159,7 @@ class GameWordForm(forms.Form):
             raise forms.ValidationError("This word is not in the game dictionary!")
 
         if word_obj.category != self.current_round.game.category:
-            raise forms.ValidationError("This word don't belong to this category!")
+            raise forms.ValidationError("This word doesn't belong to this category!")
 
         if self.current_round.game and self.current_round:
             word_already_used = SubmittedWord.objects.filter(
