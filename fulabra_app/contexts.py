@@ -98,30 +98,34 @@ class GameFrameContext:
     form: GameWordForm
 
     @property
+    def round_result_list(self) -> List[RoundResultElement]:
+        previous_round = self.game.rounds.filter(
+            round_number=self.round.round_number - 1
+        ).first()
+        if previous_round:
+            submissions = previous_round.submitted_words.all()
+            return [
+                RoundResultElement(
+                    sub.player,
+                    sub.word,
+                    self.game.game_memberships.filter(player=sub.player).first().score,
+                )
+                for sub in submissions
+            ]
+
+        return [
+            RoundResultElement(m.player, None, m.score)
+            for m in self.game.game_memberships.all()
+        ]
+
+    @property
     def available_words(self) -> List[Word]:
-        return Word.objects.filter(category=self.lobby.game.category).all()
+        return Word.objects.filter(category=self.game.category)
 
 
 @dataclass
 class RoundResultContext:
-    submissions: SubmittedWord
-
-    @property
-    def round_result_list(self) -> List[RoundResultElement]:
-        list: List[RoundResultElement] = []
-
-        for sub in self.submissions:
-            game_player = GamePlayer.objects.filter(
-                game=sub.round.game, player=sub.player
-            ).first()
-            if game_player:
-                list.append(RoundResultElement(sub.player, sub.word, game_player.score))
-            else:
-                print(
-                    f"GamePlayer with player={sub.player.nickname} and game.id={sub.round.game.id} there is not exits!"
-                )
-
-        return list
+    round_result_list: List[RoundResultElement]
 
 
 @dataclass
@@ -129,6 +133,7 @@ class RoundResultElement:
     player: Player
     word: Word
     score: int
+    status: str = ""
 
 
 @dataclass
@@ -138,3 +143,10 @@ class CategoryContext:
     @property
     def categories(self) -> List[Category]:
         return Category.objects.all()
+
+
+@dataclass
+class WordFormContext:
+    form: GameWordForm
+    submitted: bool = False
+    submission_count: int = 0

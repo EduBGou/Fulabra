@@ -8,6 +8,8 @@ from django.contrib.sessions.backends.base import SessionBase
 from django.core.cache import cache
 from asgiref.sync import async_to_sync
 
+from fulabra_app.utils import invite_to_lobby
+
 from .forms import GameWordForm
 from .contexts import *
 from .models import *
@@ -16,8 +18,8 @@ from .utils import broadcast_user_status
 
 class LobbyConsumer(WebsocketConsumer):
     disconnect_timers: dict[str, threading.Timer] = {}
-    choose_word_timers = {}
-    next_round_timers = {}
+    choose_word_timers: dict[str, threading.Thread] = {}
+    next_round_timers: dict[str, threading.Timer] = {}
 
     def remove_player_disconnection_timer(self):
         timer_key = f"{self.lobby_code}_{self.player.id}"
@@ -75,6 +77,9 @@ class LobbyConsumer(WebsocketConsumer):
                 lobby=self.lobby, player=self.player
             )
 
+        self.reconnection_handle()
+
+    def reconnection_handle(self):
         if self.lobby.status == LobbyGroup.LobbyStatus.PLAYING:
             self.game, _ = Game.objects.get_or_create(lobby=self.lobby)
             self.current_round = (
@@ -83,24 +88,49 @@ class LobbyConsumer(WebsocketConsumer):
                 .first()
             )
 
-            if self.game.status == Game.GameStatus.RESULT:
+            submitted = False
+            word_label = ""
+            for s in self.get_submissions():
+                if self.player.id == s.player.id:
+                    submitted = True
+                    word_label = s.word.label
+
+            form = GameWordForm(word=word_label, round=self.current_round)
+
+            context = GameFrameContext(
+                self.lobby,
+                self.game,
+                self.current_round,
+                form,
+            )
+
+            html = render_to_string(
+                "fulabra_app/partials/game_frame.html", {"context": context}
+            )
+            self.send(text_data=html)
+
+            if self.game.status == Game.GameStatus.CHOOSING:
+                submission_count = self.current_round.submitted_words.count()
+
+                if submitted:
+                    form.fields["word"].widget.attrs["readonly"] = "readonly"
+                    form.data["action"] = "cancel_submit"
+
+                html = render_to_string(
+                    "fulabra_app/partials/word_form.html",
+                    {"context": WordFormContext(form, submitted, submission_count)},
+                )
+
+                self.send(text_data=html)
+
+            elif self.game.status == Game.GameStatus.RESULT:
+                self.last_results = self.perfom_scoring(self.get_submissions(), False)
                 html = render_to_string(
                     "fulabra_app/partials/round_result.html",
-                    {"context": RoundResultContext(self.get_submissions())},
+                    {"context": RoundResultContext(self.last_results)},
                 )
                 self.send(text_data=html)
 
-            else:
-                context = GameFrameContext(
-                    self.lobby,
-                    self.game,
-                    self.current_round,
-                    GameWordForm(round=self.current_round),
-                )
-                html = render_to_string(
-                    "fulabra_app/partials/game_frame.html", {"context": context}
-                )
-                self.send(text_data=html)
         else:
             self.group_send_player_list()
 
@@ -128,14 +158,18 @@ class LobbyConsumer(WebsocketConsumer):
         import json
 
         data = json.loads(text_data)
+        action = data.get("action")
 
-        if data.get("action") == "start_game":
+        if action == "start_game":
             self.start_game()
 
-        elif data.get("action") == "submit_word":
+        elif action == "return_lobby":
+            self.return_lobby()
+
+        elif action == "submit_word":
             self.submit_word(data)
 
-        elif data.get("action") == "cancel_submit":
+        elif action == "cancel_submit":
             self.cancel_submit()
 
         elif data.get("category"):
@@ -156,9 +190,25 @@ class LobbyConsumer(WebsocketConsumer):
             target_id=self.lobby.id
         ).update(is_read=True)
 
-        self.game, _ = Game.objects.get_or_create(
-            lobby=self.lobby, category=self.category
+        # CHANGE STATUS TO "START" TO ADD A TUTORIAL SCREEN
+        self.game, created = Game.objects.get_or_create(
+            lobby=self.lobby, category=self.category, status=Game.GameStatus.CHOOSING
         )
+
+        if created:
+            for membership in self.lobby.lobby_memberships.all():
+                GamePlayer.objects.get_or_create(
+                    game=self.game, player=membership.player
+                )
+
+        # Change to Game.GameStatus.START
+        self.game.status = Game.GameStatus.CHOOSING
+        self.game.save()
+
+        for member in self.lobby.lobby_memberships.all():
+            if member.player.user:
+                cache.set(f"user_online_{member.player.user.id}", "in_game", timeout=600)
+                broadcast_user_status(member.player.user, "in_game")
 
         # Change to Game.GameStatus.START
         self.game.status = Game.GameStatus.CHOOSING
@@ -170,6 +220,11 @@ class LobbyConsumer(WebsocketConsumer):
                 broadcast_user_status(member.player.user, "in_game")
 
         self.next_round()
+
+    def return_lobby(self):
+        url = invite_to_lobby(self.lobby)
+        html = render_to_string("fulabra_app/hx_redirect.html", {"redirect_url": url})
+        self.group_send_html(html)
 
     def submit_word(self, data_dict):
         self.lobby.refresh_from_db()
@@ -196,16 +251,26 @@ class LobbyConsumer(WebsocketConsumer):
             form.data["word"] = word_obj.label
             form.data["action"] = "cancel_submit"
 
-        if self.current_round.submitted_words.count() >= 3:
+        submission_count = self.current_round.submitted_words.count()
+
+        if submission_count >= 3:
             self.end_round()
+            return
 
-        else:
+        submitted = form.is_valid()
+        html = render_to_string(
+            "fulabra_app/partials/word_form.html",
+            {"context": WordFormContext(form, submitted, submission_count)},
+        )
+
+        self.send(text_data=html)
+
+        if submitted:
             html = render_to_string(
-                "fulabra_app/partials/word_form.html",
-                {"context": {"form": form, "submitted": form.is_valid()}},
+                "fulabra_app/partials/submission_count.html",
+                {"context": {"submission_count": submission_count}},
             )
-
-            self.send(text_data=html)
+            self.group_send_html(html)
 
     def cancel_submit(self):
         self.lobby.refresh_from_db()
@@ -222,11 +287,11 @@ class LobbyConsumer(WebsocketConsumer):
 
         print(f"{self.player.nickname} -> cancel: {submitted_word.word.label}")
 
+        submission_count = self.current_round.submitted_words.count()
         html = render_to_string(
             "fulabra_app/partials/word_form.html",
-            {"context": {"submitted": False, "form": form}},
+            {"context": WordFormContext(form, submission_count=submission_count)},
         )
-
         self.send(text_data=html)
 
     def broadcast_category(self, category_name):
@@ -254,10 +319,55 @@ class LobbyConsumer(WebsocketConsumer):
             self.group_send_html(html)
             time.sleep(1)
 
-        time.sleep(1.5)
-        self.end_round(True)
+        time.sleep(1)
+        self.end_round()
+
+    def perfom_scoring(
+        self, submissions: List[SubmittedWord], perfom: bool = True
+    ) -> List[RoundResultElement]:
+
+        words = [sub.word for sub in submissions if sub.word]
+        word_frequencies: dict[Word, int] = {}
+        results: List[RoundResultElement] = []
+
+        for w in words:
+            if w in word_frequencies.keys():
+                word_frequencies[w] += 1
+            else:
+                word_frequencies[w] = 1
+
+        inactive_players = [m.player for m in self.game.game_memberships.all()]
+
+        for sub in submissions:
+            inactive_players.remove(sub.player)
+            game_player = sub.player.game_membership.filter(game=self.game).first()
+
+            if word_frequencies[sub.word] == 2:
+                game_player.score += 1 if perfom else 0
+                game_player.save()
+                results.append(
+                    RoundResultElement(sub.player, sub.word, game_player.score, "earns")
+                )
+
+            elif word_frequencies[sub.word] == 3 and game_player.score > 0:
+                game_player.score -= 1 if perfom else 0
+                game_player.save()
+                results.append(
+                    RoundResultElement(sub.player, sub.word, game_player.score, "loses")
+                )
+            else:
+                results.append(
+                    RoundResultElement(sub.player, sub.word, game_player.score)
+                )
+
+        for p in inactive_players:
+            SubmittedWord.objects.create(round=self.current_round, player=p)
+            results.append(RoundResultElement(p, None, p.game_membership.score))
+
+        return results
 
     def end_round(self, verify: bool = False):
+        print(f"round {self.current_round.round_number} ended!")
         if self.lobby_code in self.choose_word_timers:
             del self.choose_word_timers[self.lobby_code]
 
@@ -273,47 +383,54 @@ class LobbyConsumer(WebsocketConsumer):
 
         self.current_round = self.game.rounds.last()
         submissions = self.get_submissions()
-
-        words = [sub.word for sub in submissions if sub.word]
-        word_frequencies: dict[Word, int] = {}
-
-        for w in words:
-            if w in word_frequencies.keys():
-                word_frequencies[w] += 1
-            else:
-                word_frequencies[w] = 1
-
-        for sub in submissions:
-            game_player, _ = GamePlayer.objects.get_or_create(
-                game=self.game, player=sub.player
-            )
-
-            if word_frequencies[sub.word] == 2:
-                game_player.score += 1
-                game_player.save()
-
-            if word_frequencies[sub.word] == 3 and game_player.score > 0:
-                game_player.score -= 1
-                game_player.save()
+        self.last_results = self.perfom_scoring(submissions)
 
         html = render_to_string(
             "fulabra_app/partials/round_result.html",
-            {"context": RoundResultContext(submissions)},
+            {"context": RoundResultContext(self.last_results)},
         )
         self.group_send_html(html)
 
-        if self.lobby_code not in self.next_round_timers:
-            timer_thread = threading.Thread(
-                target=self.run_next_round_timer,
-                args=[5],
-                daemon=True,
-            )
-            self.next_round_timers[self.lobby_code] = timer_thread
-            timer_thread.start()
+        winners = self.filter_winners()
+        game_over = len(winners) > 0
 
-    def run_next_round_timer(self, duration):
-        time.sleep(duration)
-        self.next_round()
+        if game_over:
+            self.game.status = Game.GameStatus.FINISHED
+            users_winners = [p.user for p in winners if p.user is not None]
+            if users_winners:
+                self.game.winners.add(*users_winners)
+
+            self.game.save()
+            self.lobby.status = LobbyGroup.LobbyStatus.WAITING
+            self.lobby.save()
+
+            if self.lobby_code in self.next_round_timers:
+                print("GAME IS OVER, TIMER CANCELED")
+                self.next_round_timers[self.lobby_code].cancel()
+                del self.next_round_timers[self.lobby_code]
+
+            html = render_to_string(
+                "fulabra_app/partials/return_to_lobby.html",
+                {"context": {"lobby_code": self.lobby.code}},
+            )
+            self.group_send_html(html)
+            return
+
+        if self.lobby_code not in self.next_round_timers:
+            timer = threading.Timer(
+                interval=5,
+                function=self.next_round,
+            )
+            self.next_round_timers[self.lobby_code] = timer
+            timer.start()
+
+    def filter_winners(self) -> List[Player]:
+        winners: List[Player] = []
+        for res in self.last_results:
+            if res.score >= 3:
+                winners.append(res.player)
+
+        return winners
 
     def next_round(self):
         if self.lobby_code in self.next_round_timers:
