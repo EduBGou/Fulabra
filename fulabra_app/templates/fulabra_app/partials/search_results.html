@@ -1,0 +1,27 @@
+{% for result in results %}
+  <div class="card border-0 shadow-sm rounded-4 p-3 animate__animated animate__fadeIn">
+    <div class="d-flex justify-content-between align-items-center">
+      
+      <div class="d-flex align-items-center gap-3">
+        <img src="{{ result.player.avatar.url|default:'avatars/default_avatar.png' }}" class="rounded-circle" style="width: 40px; height: 40px; object-fit: cover;">
+        <div class="d-flex flex-column mx-2">
+          <a href="{% url 'profile' result.username %}" class="text-decoration-none fw-bold text-dark lh-1">{{ result.player.nickname }}</a>
+          <small class="text-muted" style="font-size: 0.75rem;">@{{ result.username }}</small>
+        </div>
+      </div>
+
+      <form hx-post="{% url 'add_friend' result.player.id %}" hx-swap="outerHTML">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3 fw-bold">
+          <i class="bi bi-person-plus-fill"></i> Add
+        </button>
+      </form>
+      
+    </div>
+  </div>
+{% empty %}
+  <div class="text-center py-4 text-muted">
+    <i class="bi bi-search display-4 mb-2 d-block"></i>
+    <p class="m-0">No players found.</p>
+  </div>
+{% endfor %}

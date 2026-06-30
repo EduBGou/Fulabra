@@ -1,0 +1,8 @@
+<div id="nav-notification-badge-wrapper" hx-swap-oob="true">
+  {% if unread_notifications_count > 0 %}
+    <span class="badge badge-danger rounded-pill" 
+          style="position: absolute; top: -2px; right: -5px; font-size: 0.65rem; padding: 0.25em 0.45em;">
+      {{ unread_notifications_count }}
+    </span>
+  {% endif %}
+</div>

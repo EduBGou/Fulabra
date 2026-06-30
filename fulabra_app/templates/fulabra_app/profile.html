@@ -19,17 +19,23 @@
           </div>
         </div>
 
-        <div>
+        <div id="friend-action-container">
           {% if user.is_authenticated %}
             {% if is_owner %}
-              <a href="{% url 'edit_profile' %}" class="btn btn-outline-primary btn-sm">Editar Perfil</a>
+              <a href="{% url 'edit_profile' %}" class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-bold">Editar Perfil</a>
             {% else %}
               {% if friend_status == 'accepted' %}
-                <span class="badge badge-info p-2">Vocês são amigos ✔</span>
+                <span class="badge bg-success p-2 rounded-pill fw-bold"><i class="bi bi-check-circle-fill me-1"></i> Vocês são amigos</span>
               {% elif friend_status == 'pending' %}
-                <button class="btn btn-secondary btn-sm" disabled>Pedido Pendente...</button>
+                <button class="btn btn-secondary btn-sm rounded-pill px-3" disabled><i class="bi bi-clock-history me-1"></i> Pedido Pendente...</button>
               {% else %}
-                <button class="btn btn-primary btn-sm">Enviar Pedido de Amizade</button>
+                <button class="btn btn-primary btn-sm rounded-pill px-3 fw-bold"
+                        hx-post="{% url 'add_friend' user_player.id %}"
+                        hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                        hx-target="#friend-action-container"
+                        hx-swap="innerHTML">
+                  <i class="bi bi-person-plus-fill me-1"></i> Adicionar Amigo
+                </button>
               {% endif %}
             {% endif %}
           {% endif %}
