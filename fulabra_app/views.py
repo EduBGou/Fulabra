@@ -31,9 +31,16 @@ def handle_lobby_view(request: HttpRequest):
 
 def create_lobby_view(request: HttpRequest):
     user: User = request.user
-    user_player = user.player
-    LobbyGroup.objects.filter(leader=user_player).update(leader=None)
-    new_lobby = LobbyGroup.objects.create(leader=user_player)
+    if user.is_authenticated:
+        player = user.player
+    else:
+        guest_player_id = request.session.get("guest_player_id")
+        player = Player.objects.filter(id=guest_player_id).first()
+        if not player:
+            return redirect("guest_form")
+
+    LobbyGroup.objects.filter(leader=player).update(leader=None)
+    new_lobby = LobbyGroup.objects.create(leader=player)
     return redirect("lobby_invite", lobby_code=new_lobby.code)
 
 
@@ -76,7 +83,7 @@ def lobby_invite_view(request: HttpRequest, lobby_code: str = ""):
 
 def guest_form_view(request: HttpRequest, lobby_code: str = ""):
     lobby = LobbyGroup.objects.filter(code=lobby_code).first()
-    if not lobby or lobby_is_full(lobby):
+    if lobby and lobby_is_full(lobby):
         return redirect("lobby_invite", lobby_code=lobby_code)
 
     avatar_presets = [
@@ -96,7 +103,9 @@ def guest_form_view(request: HttpRequest, lobby_code: str = ""):
 
             player.save()
             request.session["guest_player_id"] = player.id
-            return redirect("lobby_room", lobby_code=lobby_code)
+            if len(lobby_code) > 0:
+                return redirect("lobby_room", lobby_code=lobby_code)
+            return redirect("create_lobby")
     else:
         if request.session.get("guest_player_id"):
             player = Player.objects.filter(
@@ -129,6 +138,12 @@ def lobby_room_view(request: HttpRequest, lobby_code: str):
         player = Player.objects.filter(id=guest_player_id).first()
         if player is None:
             return redirect("lobby_invite", lobby_code=lobby_code)
+
+    if lobby_is_full(lobby, player):
+        context = {"error_message": f'The lobby with code "{lobby_code}" is full.'}
+        return render(
+            request, "fulabra_app/partials/error_message.html", {"context": context}
+        )
 
     is_player_in_lobby = lobby.lobby_memberships.filter(player=player).exists()
 
@@ -490,6 +505,11 @@ def invite_friend_to_lobby_view(request: HttpRequest, lobby_code: str, friend_id
 
 def lobby_online_friends_view(request: HttpRequest, lobby_code: str):
     lobby = get_object_or_404(LobbyGroup, code=lobby_code)
-
-    context = LobbyContext(lobby, request.user.player, invite_to_lobby(lobby))
+    user: User = request.user
+    if request.user.is_authenticated:
+        player = user.player
+    else:
+        guest_player_id = request.session.get("guest_player_id")
+        player = Player.objects.filter(id=guest_player_id).first()
+    context = LobbyContext(lobby, player, invite_to_lobby(lobby))
     return render(request, "fulabra_app/partials/online_friends_list.html", {"context": context})

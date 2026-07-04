@@ -100,7 +100,7 @@ class LobbyGroup(models.Model):
 
     def generate_unique_code(self) -> str:
         """Helper method to generate a unique lobby code"""
-        return "AAAAAA"
+        # return "AAAAAA"
         while True:
             new_code = "".join(choices(CHARACTERS, k=LOBBY_CODE_LENGTH))
             if not LobbyGroup.objects.filter(code=new_code).exists():
@@ -183,8 +183,8 @@ class Notification(models.Model):
 
     def __str__(self):
         return f"Para {self.recipient.username} - {self.notification_type} ({"Lida" if self.is_read else "Pendente"})"
-    
-    
+
+
 class Category(models.Model):
     name = models.CharField(max_length=64)
 

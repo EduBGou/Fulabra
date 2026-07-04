@@ -53,7 +53,7 @@
             </div>
           </div>
 
-          {% if context.current_lobby.leader == context.player %}
+          {% if context.player.user and context.current_lobby.leader == context.user %}
             {% include 'fulabra_app/partials/online_friends_list.html' %}
           {% endif %}
         </div>
