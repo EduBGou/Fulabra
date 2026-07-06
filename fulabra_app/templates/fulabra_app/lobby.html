@@ -8,8 +8,7 @@
     <div id="error-message"></div>
     <div id="players-frame" class="position-fixed top-0 end-0" style="z-index: 1050; min-width: 200px;"></div>
     <div id="title-div"></div>
-    
-    
+
     <div id="ws-connection" hx-ext="ws" ws-connect="/ws/lobby/{{ context.current_lobby.code }}/">
       <div class="container-fluid d-flex align-items-center justify-content-center bg-white text-black p-4">
         <div class="row w-100 max-width-xl justify-content-center g-4">
@@ -53,7 +52,7 @@
             </div>
           </div>
 
-          {% if context.player.user and context.current_lobby.leader == context.user %}
+          {% if context.player.user and context.current_lobby.leader == user.player %}
             {% include 'fulabra_app/partials/online_friends_list.html' %}
           {% endif %}
         </div>
