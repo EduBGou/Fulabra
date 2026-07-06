@@ -57,6 +57,7 @@ class LobbyContext:
     invite: str
     error_message: str = None
 
+    @property
     def current_category(self) -> Category:
         return Category.objects.first()
 
@@ -68,18 +69,22 @@ class LobbyContext:
     def online_friends(self) -> list[User]:
         if not self.player.user:
             return []
-        
+
         friends = self.player.user.friends.all()
-        return [friend for friend in friends if cache.get(f"user_online_{friend.id}") == "online"]
-    
+        return [
+            friend
+            for friend in friends
+            if cache.get(f"user_online_{friend.id}") == "online"
+        ]
+
     @property
     def lobby_players(self) -> list[Player]:
         return [member.player for member in self.current_lobby.lobby_memberships.all()]
-    
+
     @property
     def pending_invite_user_ids(self) -> list[int]:
         from .models import Notification
-        # Notificações não lidas enviadas da sala
+
         notes = Notification.objects.filter(
             sender=self.player.user,
             notification_type="game_invite",
