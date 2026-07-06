@@ -1,5 +1,4 @@
 import threading
-import json
 import time
 
 from channels.generic.websocket import WebsocketConsumer
@@ -13,8 +12,12 @@ from fulabra_app.utils import invite_to_lobby
 from .forms import GameWordForm
 from .contexts import *
 from .models import *
-from .utils import broadcast_user_status
-
+from .utils import (
+    broadcast_user_status,
+    get_last_game_round,
+    get_submissions,
+    perform_scoring,
+)
 
 class LobbyConsumer(WebsocketConsumer):
     disconnect_timers: dict[str, threading.Timer] = {}
@@ -82,15 +85,11 @@ class LobbyConsumer(WebsocketConsumer):
     def reconnection_handle(self):
         if self.lobby.status == LobbyGroup.LobbyStatus.PLAYING:
             self.game, _ = Game.objects.get_or_create(lobby=self.lobby)
-            self.current_round = (
-                GameRound.objects.filter(game=self.game)
-                .order_by("-round_number")
-                .first()
-            )
+            self.current_round = get_last_game_round(self.game)
 
             submitted = False
             word_label = ""
-            for s in self.get_submissions():
+            for s in get_submissions(self.current_round):
                 if self.player.id == s.player.id:
                     submitted = True
                     word_label = s.word.label
@@ -124,7 +123,9 @@ class LobbyConsumer(WebsocketConsumer):
                 self.send(text_data=html)
 
             elif self.game.status == Game.GameStatus.RESULT:
-                self.last_results = self.perfom_scoring(self.get_submissions(), False)
+                self.last_results = perform_scoring(
+                    self.game, get_submissions(self.current_round), False
+                )
                 html = render_to_string(
                     "fulabra_app/partials/round_result.html",
                     {"context": RoundResultContext(self.last_results)},
@@ -186,8 +187,7 @@ class LobbyConsumer(WebsocketConsumer):
         self.lobby.save()
 
         Notification.objects.filter(
-            notification_type="game_invite",
-            target_id=self.lobby.id
+            notification_type="game_invite", target_id=self.lobby.id
         ).update(is_read=True)
 
         # CHANGE STATUS TO "START" TO ADD A TUTORIAL SCREEN
@@ -207,7 +207,9 @@ class LobbyConsumer(WebsocketConsumer):
 
         for member in self.lobby.lobby_memberships.all():
             if member.player.user:
-                cache.set(f"user_online_{member.player.user.id}", "in_game", timeout=600)
+                cache.set(
+                    f"user_online_{member.player.user.id}", "in_game", timeout=600
+                )
                 broadcast_user_status(member.player.user, "in_game")
 
         # Change to Game.GameStatus.START
@@ -216,7 +218,9 @@ class LobbyConsumer(WebsocketConsumer):
 
         for member in self.lobby.lobby_memberships.all():
             if member.player.user:
-                cache.set(f"user_online_{member.player.user.id}", "in_game", timeout=600)
+                cache.set(
+                    f"user_online_{member.player.user.id}", "in_game", timeout=600
+                )
                 broadcast_user_status(member.player.user, "in_game")
 
         self.next_round()
@@ -322,50 +326,6 @@ class LobbyConsumer(WebsocketConsumer):
         time.sleep(1)
         self.end_round()
 
-    def perfom_scoring(
-        self, submissions: List[SubmittedWord], perfom: bool = True
-    ) -> List[RoundResultElement]:
-
-        words = [sub.word for sub in submissions if sub.word]
-        word_frequencies: dict[Word, int] = {}
-        results: List[RoundResultElement] = []
-
-        for w in words:
-            if w in word_frequencies.keys():
-                word_frequencies[w] += 1
-            else:
-                word_frequencies[w] = 1
-
-        inactive_players = [m.player for m in self.game.game_memberships.all()]
-
-        for sub in submissions:
-            inactive_players.remove(sub.player)
-            game_player = sub.player.game_membership.filter(game=self.game).first()
-
-            if word_frequencies[sub.word] == 2:
-                game_player.score += 1 if perfom else 0
-                game_player.save()
-                results.append(
-                    RoundResultElement(sub.player, sub.word, game_player.score, "earns")
-                )
-
-            elif word_frequencies[sub.word] == 3 and game_player.score > 0:
-                game_player.score -= 1 if perfom else 0
-                game_player.save()
-                results.append(
-                    RoundResultElement(sub.player, sub.word, game_player.score, "loses")
-                )
-            else:
-                results.append(
-                    RoundResultElement(sub.player, sub.word, game_player.score)
-                )
-
-        for p in inactive_players:
-            SubmittedWord.objects.create(round=self.current_round, player=p)
-            results.append(RoundResultElement(p, None, p.game_membership.score))
-
-        return results
-
     def end_round(self, verify: bool = False):
         print(f"round {self.current_round.round_number} ended!")
         if self.lobby_code in self.choose_word_timers:
@@ -381,9 +341,9 @@ class LobbyConsumer(WebsocketConsumer):
         if self.player != self.lobby.leader and verify:
             return
 
-        self.current_round = self.game.rounds.last()
-        submissions = self.get_submissions()
-        self.last_results = self.perfom_scoring(submissions)
+        self.current_round = get_last_game_round(self.game)
+        submissions = get_submissions(self.current_round)
+        self.last_results = perform_scoring(self.game, submissions)
 
         html = render_to_string(
             "fulabra_app/partials/round_result.html",
@@ -480,9 +440,6 @@ class LobbyConsumer(WebsocketConsumer):
     def send_html_event(self, event):
         self.send(text_data=event["html"])
 
-    def get_submissions(self) -> QuerySet[SubmittedWord]:
-        return self.current_round.submitted_words.select_related("word", "player").all()
-
     def group_send_player_list(self):
         async_to_sync(self.channel_layer.group_send)(
             self.lobby_code, {"type": self.send_player_list_event.__name__}
@@ -550,8 +507,7 @@ class NotificationConsumer(WebsocketConsumer):
             self.group_name = f"notifications_{self.user.username}"
 
             async_to_sync(self.channel_layer.group_add)(
-                self.group_name,
-                self.channel_name
+                self.group_name, self.channel_name
             )
 
             timer_key = f"offline_timer_{self.user.id}"
@@ -564,14 +520,13 @@ class NotificationConsumer(WebsocketConsumer):
             self.broadcast_status_to_friends("online")
 
             self.accept()
-        else: 
+        else:
             self.close()
 
     def disconnect(self, code):
         if self.user.is_authenticated:
             async_to_sync(self.channel_layer.group_discard)(
-                self.group_name,
-                self.channel_name
+                self.group_name, self.channel_name
             )
 
             timer_key = f"offline_timer_{self.user.id}"
@@ -583,14 +538,17 @@ class NotificationConsumer(WebsocketConsumer):
         timer_key = f"offline_timer_{user.id}"
         if timer_key in NotificationConsumer.disconnect_timers:
             del NotificationConsumer.disconnect_timers[timer_key]
-        
+
         cache.delete(f"user_online_{self.user.id}")
 
         self.broadcast_status_to_friends("offline")
 
     def send_notification_update(self, event):
         from .models import Notification
-        unread_count = Notification.objects.filter(recipient=self.user, is_read=False).count()
+
+        unread_count = Notification.objects.filter(
+            recipient=self.user, is_read=False
+        ).count()
 
         context = {"unread_notifications_count": unread_count}
         html = render_to_string("fulabra_app/partials/notification_badge.html", context)
@@ -599,23 +557,25 @@ class NotificationConsumer(WebsocketConsumer):
         if notification_id:
             note = Notification.objects.filter(id=notification_id).first()
             if note:
-                card_html = render_to_string("fulabra_app/partials/notification_card.html", {"note": note})
+                card_html = render_to_string(
+                    "fulabra_app/partials/notification_card.html", {"note": note}
+                )
                 html += card_html
-                
+
         self.send(text_data=html)
 
     def broadcast_status_to_friends(self, status):
         broadcast_user_status(self.user, status)
-    
+
     def send_status_update(self, event):
         friend_username = event["friend_username"]
         status = event["status"]
 
-        html = render_to_string("fulabra_app/partials/friend_status_dot.html", {
-            "friend_username": friend_username,
-            "status": status
-        })
-        
+        html = render_to_string(
+            "fulabra_app/partials/friend_status_dot.html",
+            {"friend_username": friend_username, "status": status},
+        )
+
         # Quando algum amigo muda o status
         html += """
         <span hx-swap-oob="beforeend:body">

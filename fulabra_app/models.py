@@ -1,4 +1,3 @@
-from random import choices
 from django.db import models
 from django.db.models import QuerySet
 from django.contrib.auth.models import AbstractUser
@@ -71,10 +70,19 @@ class LobbyGroup(models.Model):
         PLAYING = "playing", _("In Game")
         FINISHED = "finished", _("Game Over")
 
+    def generate_unique_code() -> str:
+        from random import choices
+
+        while True:
+            new_code = "".join(choices(CHARACTERS, k=LOBBY_CODE_LENGTH))
+            if not LobbyGroup.objects.filter(code=new_code).exists():
+                return new_code
+
     code = models.CharField(
         max_length=LOBBY_CODE_LENGTH,
         unique=True,
         editable=False,
+        default=generate_unique_code,
         db_index=True,
     )
 
@@ -97,14 +105,6 @@ class LobbyGroup(models.Model):
     @property
     def game(self) -> Game:
         return getattr(self, LobbyGroup.game.__name__).first()
-
-    def generate_unique_code(self) -> str:
-        """Helper method to generate a unique lobby code"""
-        # return "AAAAAA"
-        while True:
-            new_code = "".join(choices(CHARACTERS, k=LOBBY_CODE_LENGTH))
-            if not LobbyGroup.objects.filter(code=new_code).exists():
-                return new_code
 
     def __str__(self):
         return f"Lobby {self.code} ({self.status})"
