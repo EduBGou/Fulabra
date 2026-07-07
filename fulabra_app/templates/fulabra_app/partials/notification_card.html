@@ -5,9 +5,9 @@
         <span class="badge bg-warning mb-1 rounded-2 small">{{ note.get_notification_type_display }}</span>
         <p class="mb-0 fw-medium">
           {% if note.notification_type == 'friend_request' %}
-            <a href="{% url "profile" note.sender.username %}" class="text-decoration-none">{{ note.sender.username }}</a> sent you a friend request!
+            <a href="{% url "profile" note.sender.username %}" class="text-decoration-none">{{ note.sender.username }}</a> te enviou um pedido de amizade!
           {% elif note.notification_type == 'game_invite' %}
-            <a href="{% url "profile" note.sender.username %}" class="text-decoration-none">{{ note.sender.username }}</a> has invited you to their lobby!
+            <a href="{% url "profile" note.sender.username %}" class="text-decoration-none">{{ note.sender.username }}</a> te convidou para o lobby dele!
           {% endif %}
         </p>
         <small class="text-muted" style="font-size: 0.75rem;">{{ note.created_at|timesince }} ago</small>
@@ -19,7 +19,7 @@
               hx-swap="outerHTML">
           {% csrf_token %}
           <input type="hidden" name="action" value="accept">
-          <button type="submit" class="btn btn-sm btn-success rounded-4 px-3 fw-bold">Accept</button>
+          <button type="submit" class="btn btn-sm btn-success rounded-4 px-3 fw-bold">Aceitar</button>
         </form>
 
         <form hx-post="{% url 'notification_action' note.id %}" 
@@ -27,7 +27,7 @@
               hx-swap="outerHTML">
           {% csrf_token %}
           <input type="hidden" name="action" value="reject">
-          <button type="submit" class="btn btn-sm btn-outline-danger rounded-4 px-3 fw-bold">Decline</button>
+          <button type="submit" class="btn btn-sm btn-outline-danger rounded-4 px-3 fw-bold">Recusar</button>
         </form>
       </div>
     </div>

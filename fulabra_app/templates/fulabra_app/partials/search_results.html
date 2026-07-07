@@ -13,7 +13,7 @@
       <form hx-post="{% url 'add_friend' result.player.id %}" hx-swap="outerHTML">
         {% csrf_token %}
         <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3 fw-bold">
-          <i class="bi bi-person-plus-fill"></i> Add
+          <i class="bi bi-person-plus-fill"></i> Adicioanr
         </button>
       </form>
       
@@ -22,6 +22,6 @@
 {% empty %}
   <div class="text-center py-4 text-muted">
     <i class="bi bi-search display-4 mb-2 d-block"></i>
-    <p class="m-0">No players found.</p>
+    <p class="m-0">Nenhum jogador encontrado.</p>
   </div>
 {% endfor %}

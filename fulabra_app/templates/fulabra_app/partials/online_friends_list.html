@@ -3,8 +3,8 @@
   hx-trigger="refreshSidebar from:body"
   hx-swap="outerHTML">
   <div class="card border-0 rounded-4 shadow-lg h-100 p-4">
-    <h4 class="fw-bold mb-3 d-flex align-items-center gap-2"><span class="pulse-indicator bg-success me-2" role="status"></span>&nbsp;Online Friends</h4>
-    <p class="text-muted small mb-4">Invite your squad to fill the missing slots.</p>
+    <h4 class="fw-bold mb-3 d-flex align-items-center gap-2"><span class="pulse-indicator bg-success me-2" role="status"></span>&nbsp;Amigos Online</h4>
+    <p class="text-muted small mb-4">Convide amigos para preenchar as vagas restantes.</p>
 
     <div class="friend-sidebar-list d-flex flex-column gap-2 overflow-auto style-scrollbar" style="max-height: 400px;">
       {% for f in context.online_friends %}
@@ -19,9 +19,9 @@
           {% if f.player in context.lobby_players %}
             <button class="btn btn-sm btn-secondary rounded-pill px-3 fw-bold" disabled>In Lobby</button>
           {% elif context.lobby_players|length >= 3 %}
-            <button class="btn btn-sm btn-dark rounded-pill px-3 fw-bold" disabled><i class="bi bi-slash-circle me-1"></i> Lobby Full</button>
+            <button class="btn btn-sm btn-dark rounded-pill px-3 fw-bold" disabled><i class="bi bi-slash-circle me-1"></i> Lobby cheio</button>
           {% elif f.id in context.pending_invite_user_ids %}
-            <button class="btn btn-sm btn-success rounded-pill px-3 fw-bold" disabled><i class="bi bi-check-lg me-1"></i> Sent!</button>
+            <button class="btn btn-sm btn-success rounded-pill px-3 fw-bold" disabled><i class="bi bi-check-lg me-1"></i> Enviado!</button>
           {% else %}
             <button type="button" 
                     class="btn btn-sm btn-primary rounded-pill px-3 fw-bold invite-btn"
@@ -35,7 +35,7 @@
       {% empty %}
         <div class="text-center py-5 text-muted">
           <i class="bi bi-people mb-2 display-6 d-block"></i>
-          <p class="small m-0">No friends online right now.</p>
+          <p class="small m-0">Nenhum amigo online agora.</p>
         </div>
       {% endfor %}
     </div>

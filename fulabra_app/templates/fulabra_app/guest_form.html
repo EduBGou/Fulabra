@@ -6,7 +6,7 @@
       <div class="col-12 col-md-8 col-lg-6">
         <div class="card border-0 rounded-4 shadow overflow-hidden">
           <div class="bg-primary text-center text-white mb-4 p-4">
-            <h3 class="fw-bold m-0">Play as a Guest</h3>
+            <h3 class="fw-bold m-0">Jogar como convidado</h3>
           </div>
           <div class="card-body p-4 p-sm-5">
             <form method="post" enctype="multipart/form-data" class="needs-validation">
@@ -31,7 +31,7 @@
               </div>
 
               <div class="mb-4">
-                <label class="form-label fw-semibold text-secondary small text-uppercase tracking-wider mb-3">Choose an Avatar Option</label>
+                <label class="form-label fw-semibold text-secondary small text-uppercase tracking-wider mb-3">Escolha um avatar</label>
 
                 <div class="row g-3 text-center align-items-center justify-content-start">
                   {% for preset in avatar_presets %}
@@ -49,9 +49,9 @@
           </div>
           <div class="card-footer bg-light border-0 py-3 text-center">
             <p class="mb-0 small text-muted fw-medium">
-              If you want to save your progrees or choose a custom avatar,
-              <a href="{% url 'login' %}" class="text-decoration-none text-primary fw-semibold ms-1">Log In here</a>
-              or <a href="{% url 'register' %}" class="text-decoration-none text-primary fw-semibold ms-1">Register</a>
+              Se você quiser salvar seu progresso ou escolher um avatar personalizado,
+              <a href="{% url 'login' %}" class="text-decoration-none text-primary fw-semibold ms-1">Faça login aqui</a>
+              ou <a href="{% url 'register' %}" class="text-decoration-none text-primary fw-semibold ms-1">Registre-se</a>
             </p>
           </div>
         </div>

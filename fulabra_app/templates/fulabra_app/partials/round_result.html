@@ -2,16 +2,16 @@
   {% for res in context.round_result_list %}
     <div>
       {% if res.status == 'earns' %}
-        <strong>{{ res.player.nickname }}</strong> sent <span class="text-success">{{ res.word }}</span>, current pnts: {{ res.score }} <small class="text-success">(+1)</small>
+        <strong>{{ res.player.nickname }}</strong> enviou <span class="text-success">{{ res.word }}</span>, pnts atual: {{ res.score }} <small class="text-success">(+1)</small>
       {% elif res.status == 'loses' %}
-        <strong>{{ res.player.nickname }}</strong> sent <span class="text-danger">{{ res.word }}</span>, current pnts: {{ res.score }} <small class="text-danger">(-1)</small>
+        <strong>{{ res.player.nickname }}</strong> enviou <span class="text-danger">{{ res.word }}</span>, pnts atual: {{ res.score }} <small class="text-danger">(-1)</small>
       {% else %}
-        <strong>{{ res.player.nickname }}</strong> sent <span>{{ res.word|default:'-' }}</span>, current pnts: {{ res.score }}
+        <strong>{{ res.player.nickname }}</strong> enviou <span>{{ res.word|default:'-' }}</span>, pnts atual: {{ res.score }}
       {% endif %}
     </div>
     <div>
       {% if res.score >= 3 %}
-        <strong class="text-warning">{{ res.player.nickname }}</strong> won!
+        <strong class="text-warning">{{ res.player.nickname }}</strong> venceu!
       {% endif %}
     </div>
   {% endfor %}

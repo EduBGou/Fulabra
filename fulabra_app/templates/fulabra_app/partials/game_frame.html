@@ -2,7 +2,7 @@
 <div id="game-container" hx-swap-oob="innerHTML">
   <div class="d-flex flex-column align-items-center text-center justify-content-between py-1 position-relative">
     {% if context.round.round_number >= 2 %}
-      <p>These were the words from the last round...</p>
+      <p>Esssa foram as palavras da última rodada...</p>
       <div class="row row-cols-3 justify-content-center g-3 w-100 max-width-md my-3">
         {% for res in context.round_result_list %}
           <div class="col">
@@ -17,7 +17,7 @@
         {% endfor %}
       </div>
     {% else %}
-      <p>Choose a random first word to begin the game!</p>
+      <p>Escolha uma palavra aleatória para começar!</p>
     {% endif %}
 
     <div class="w-100 mb-3">
@@ -28,7 +28,7 @@
             <span class="fw-bold text-dark fs-5">#{{ context.lobby.code }}</span>
           </div>
           <div style="margin-left: 20px;">
-            <span class="text-uppercase tracking-wider text-muted small d-block fw-semibold" style="font-size: 0.75rem;">Category</span>
+            <span class="text-uppercase tracking-wider text-muted small d-block fw-semibold" style="font-size: 0.75rem;">Categoria</span>
             <span class="fw-bold text-dark fs-5">{{ context.game.category }}</span>
           </div>
         </div>

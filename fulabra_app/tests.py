@@ -30,7 +30,10 @@ def make_category_with_words(*labels) -> Category:
 
 class ScoringTest(TestCase):
     """
-    Rule: if exactly 2 players submit the same word, both earn +1 point.
+    Rules:
+        - if no player submits the same word, there will be no scoring.
+        - if exactly 2 players submit the same word, both earn +1 point.
+        - if 3 players submit the same word, they lose 1 point.
     """
 
     def setUp(self):
@@ -90,7 +93,7 @@ class ScoringTest(TestCase):
             key=lambda r: r.player.nickname,
         )
 
-        self.assertEqual(results, expected, "no player should earns or loses a point")
+        self.assertEqual(results, expected, "no player should earn or lose a point")
 
     def test_two_matching_perform_scoring(self):
         # p1 and p2 submit "apple"; p3 submits "banana"
