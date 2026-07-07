@@ -9,7 +9,6 @@ from ..utils import hx_redirect
 
 
 class NotificationStrategy(ABC):
-    """Interface: cada tipo de notificação implementa seu próprio accept/reject."""
     @abstractmethod
     def handle(self, request, notification, action):
         pass
@@ -49,8 +48,22 @@ class GameInviteStrategy(NotificationStrategy):
             )
         return None
 
-
-NOTIFICATION_STRATEGIES = {
+_STRATEGIES = {
     "friend_request": FriendRequestStrategy(),
     "game_invite": GameInviteStrategy(),
 }
+
+class NotificationContext:
+    def __init__(self, notification):
+        self.notification = notification
+        self.strategy = _STRATEGIES.get(notification.notification_type)
+
+    def execute(self, request, action) -> HttpResponse | None:
+        if not self.strategy:
+            return None
+
+        if not self.notification.is_read:
+            self.notification.is_read = True
+            self.notification.save()
+
+        return self.strategy.handle(request, self.notification, action)

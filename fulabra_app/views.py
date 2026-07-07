@@ -10,7 +10,7 @@ from .utils import hx_redirect, invite_to_lobby, lobby_is_full, set_player_prese
 from .contexts import LobbyContext
 from .models import *
 
-from .services.notification_strategy import NOTIFICATION_STRATEGIES
+from .services.notification_strategy import NotificationContext
 
 
 def index_view(request: HttpRequest):
@@ -297,17 +297,11 @@ def notification_action_view(request: HttpRequest, notification_id: int):
         notification = get_object_or_404(Notification, id=notification_id, recipient=request.user)
         action = request.POST.get("action")
 
-        notification.is_read = True
-        notification.save()
+        context = NotificationContext(notification)
+        early_response = context.execute(request, action)
 
-        strategy = NOTIFICATION_STRATEGIES.get(notification.notification_type)
-        if strategy:
-            early_response = strategy.handle(request, notification, action)
-            if early_response is not None:
-                return early_response
-        
-        notification.is_read = True
-        notification.save()
+        if early_response is not None:
+            return early_response
 
         # Se o inbox zerou as notificações
         unread_count = request.user.notifications.filter(is_read=False).count()
