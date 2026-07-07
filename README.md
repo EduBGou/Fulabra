@@ -183,6 +183,12 @@ Fulabra is developed and maintained by:
 - **Eduardo Boaro Gouveia** — [@EduBGou](https://github.com/EduBGou)
 - **Vinicius Herberts Dal Bem** — [@vininnn](https://github.com/vininnn)
 
+### Resources
+
+AI tools were used during the development of this project to assist with interface implementation and error handling. All code and architectural decisions were manually reviewed to ensure accuracy and project integrity.
+
+AIs used: [Google Gemini](https://gemini.google.com/), [Claude](https://claude.ai/).
+
 ## License
  
 This project is licensed under the terms of the **MIT License** — see [`LICENSE`](LICENSE) for details.
