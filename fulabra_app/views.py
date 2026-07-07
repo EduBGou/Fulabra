@@ -10,6 +10,8 @@ from .utils import hx_redirect, invite_to_lobby, lobby_is_full, set_player_prese
 from .contexts import LobbyContext
 from .models import *
 
+from .services.notification_strategy import NOTIFICATION_STRATEGIES
+
 
 def index_view(request: HttpRequest):
     return render(request, "fulabra_app/index.html")
@@ -295,41 +297,14 @@ def notification_action_view(request: HttpRequest, notification_id: int):
         notification = get_object_or_404(Notification, id=notification_id, recipient=request.user)
         action = request.POST.get("action")
 
-        if notification.notification_type == "friend_request":
-            friend_request = FriendRequest.objects.filter(id=notification.target_id).first()
-            if friend_request:
-                if action == "accept":
-                    friend_request.status = "accepted"
-                    request.user.friends.add(friend_request.from_user)
-                    friend_request.from_user.friends.add(request.user)
-                elif action == "reject":
-                    friend_request.status = "rejected"
-                friend_request.save()
-        
-        elif notification.notification_type == "game_invite":
-            if action == "accept":
-                lobby = LobbyGroup.objects.filter(id=notification.target_id).first()
+        notification.is_read = True
+        notification.save()
 
-                notification.is_read = True
-                notification.save()
-                
-                if lobby:
-                    return hx_redirect("lobby_invite", kwargs={"lobby_code": lobby.code})
-                else:
-                    return HttpResponse("Lobby no longer exists", status=404)
-            elif action == "reject":
-                notification.is_read = True
-                notification.save()
-
-                # Se o convite foi recusado, libera o botão de volta pra enviar convite
-                from channels.layers import get_channel_layer
-                from asgiref.sync import async_to_sync
-                
-                channel_layer = get_channel_layer()
-                async_to_sync(channel_layer.group_send)(
-                    f"notifications_{notification.sender.username}",
-                    {"type": "trigger_sidebar_refresh"}
-                )
+        strategy = NOTIFICATION_STRATEGIES.get(notification.notification_type)
+        if strategy:
+            early_response = strategy.handle(request, notification, action)
+            if early_response is not None:
+                return early_response
         
         notification.is_read = True
         notification.save()
