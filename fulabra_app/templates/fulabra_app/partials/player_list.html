@@ -34,18 +34,18 @@
         class="btn btn-primary rounded-pill fw-extrabold"
         hx-vals='{"action":"start_game"}'
         ws-send>
-          START MATCH
+          Começar
         </button>
       {% else %}
         <div class="text-center">
           <span class="spinner-grow spinner-grow-sm text-primary me-2" role="status"></span>
-          Waiting for Host to start the game...
+          Agurdando o host para começar o jogo...
         </div>
       {% endif %}
     </div>
   {% else %}
     <div class="text-secondary small mx-auto py-2 text-center">
-      <i class="bi bi-exclamation-triangle-fill"></i> Waiting for exactly 3 players to lock in...
+      <i class="bi bi-exclamation-triangle-fill"></i> Aguardando chegar 3 jogadores...
     </div>
   {% endif %}
 </div>

@@ -2,14 +2,14 @@
 
 {% block body %}
 <div class="container py-4 max-w-md mx-auto" style="max-width: 600px;">
-  <h2 class="fw-bold mb-4 d-flex align-items-center gap-2"> Friends</h2>
+  <h2 class="fw-bold mb-4 d-flex align-items-center gap-2"> Amizades</h2>
 
   <ul class="nav nav-pills nav-fill mb-4 bg-white shadow-sm p-1 rounded-pill" id="friendsTabs" role="tablist">
     <li class="nav-item" role="presentation">
-      <a class="nav-link active rounded-pill fw-bold" id="my-friends-tab" data-toggle="pill" href="#my-friends" role="tab">My Friends</a>
+      <a class="nav-link active rounded-pill fw-bold" id="my-friends-tab" data-toggle="pill" href="#my-friends" role="tab">Meus amigos</a>
     </li>
     <li class="nav-item" role="presentation">
-      <a class="nav-link rounded-pill fw-bold" id="find-users-tab" data-toggle="pill" href="#find-users" role="tab">Find Users</a>
+      <a class="nav-link rounded-pill fw-bold" id="find-users-tab" data-toggle="pill" href="#find-users" role="tab">Buscar Usuários</a>
     </li>
   </ul>
 
@@ -17,7 +17,7 @@
  
     <button class="btn btn-outline-primary rounded-pill btn-sm fw-bold mb-2" 
         onclick="navigator.clipboard.writeText('{{ request.scheme }}://{{ request.get_host }}{% url 'invite_link' request.user.username %}'); alert('Link copied!');">
-      <i class="bi bi-link-45deg"></i> Share Invite Link
+      <i class="bi bi-link-45deg"></i> Compartilhar link de convite
     </button>
  
     <div class="tab-pane fade show active" id="my-friends" role="tabpanel">
@@ -61,7 +61,7 @@
         {% empty %}
           <div class="text-center py-5 text-muted">
             <i class="bi bi-emoji-frown display-1 mb-3 d-block"></i>
-            <p class="fs-5 m-0">You don't have any friends yet.</p>
+            <p class="fs-5 m-0">Você não tem amizades ainda.</p>
           </div>
         {% endfor %}
       </div>
@@ -80,7 +80,7 @@
 
       <div id="search-results" class="d-flex flex-column gap-2">
         <div class="text-center py-5 text-muted small">
-          Start typing to find new players.
+          Digite para encontrar novos jogadores (mínimo 3 caracteres).
         </div>
       </div>
     </div>

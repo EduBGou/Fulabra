@@ -36,8 +36,8 @@ def lobby_is_full(lobby: LobbyGroup, player: Player = None) -> bool:
     return lobby.lobby_memberships.count() >= 3
 
 
-def get_last_game_round(game) -> GameRound:
-    GameRound.objects.filter(game=game).order_by("-round_number").first()
+def get_last_game_round(game: Game) -> GameRound:
+    return GameRound.objects.filter(game=game).order_by("-round_number").first()
 
 
 def perform_scoring(

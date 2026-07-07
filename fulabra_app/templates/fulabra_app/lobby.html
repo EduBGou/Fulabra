@@ -16,16 +16,16 @@
             <div id="game-container" class="card border-0 rounded-4 shadow-lg h-100 p-4">
               <div class="d-flex justify-content-between align-items-center mb-4 border-bottom border-secondary pb-3">
                 <div>
-                  <span class="text-uppercase tracking-wider text-muted small fw-bold">Private Match</span>
+                  <span class="text-uppercase tracking-wider text-muted small fw-bold">Partida Privada</span>
                   <h2 class="text-dark fw-extrabold m-0">Lobby #{{ context.current_lobby.code }}</h2>
                 </div>
 
-                <button id="btn-invite" class="btn btn-outline-secondary rounded-pill px-4 btn-sm fw-bold transition-all" data-invite-link="{{ context.invite }}">Copy Invite Link</button>
+                <button id="btn-invite" class="btn btn-outline-secondary rounded-pill px-4 btn-sm fw-bold transition-all" data-invite-link="{{ context.invite }}">Copiar link de convite</button>
               </div>
 
               <div id="category-container">
                 {% if user.player == context.current_lobby.leader %}
-                  <label for="category">Category:</label>
+                  <label for="category">Categoria:</label>
                   <select id="category" name="category" ws-send>
                     {% for c in context.categories %}
                       {% if c == context.current_category %}
@@ -47,7 +47,7 @@
               </div>
 
               <div class="mt-4 pt-3 border-top border-secondary d-flex justify-content-start">
-                <a href="{% url 'index' %}" class="btn btn-outline-danger px-4 rounded-pill fw-bold"><i class="bi bi-box-arrow-left"></i> Leave Lobby</a>
+                <a href="{% url 'index' %}" class="btn btn-outline-danger px-4 rounded-pill fw-bold"><i class="bi bi-box-arrow-left"></i> Sair do Lobby</a>
               </div>
             </div>
           </div>
@@ -101,7 +101,7 @@
       const originalText = inviteBtn.innerHTML
       inviteBtn.addEventListener('click', function () {
         navigator.clipboard.writeText(inviteBtn.dataset.inviteLink).then(function () {
-          inviteBtn.innerHTML = '<i class="bi bi-check-lg"></i> Copied! ✓'
+          inviteBtn.innerHTML = '<i class="bi bi-check-lg"></i> Copiado! ✓'
           inviteBtn.classList.replace('btn-outline-info', 'btn-success')
           setTimeout(function () {
             inviteBtn.innerHTML = originalText

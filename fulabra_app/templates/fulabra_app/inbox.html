@@ -3,7 +3,7 @@
 {% block body %}
 <div class="container py-4 max-w-md mx-auto" style="max-width: 600px;">
   <h2 class="fw-bold mb-4 d-flex align-items-center gap-2">
-    Inbox
+    Caixa de Entrada
   </h2>
 
   <div id="inbox-list" class="d-flex flex-column gap-3">
@@ -15,9 +15,9 @@
             <span class="badge bg-warning mb-1 rounded-2 small">{{ note.get_notification_type_display }}</span>
             <p class="mb-0 fw-medium">
               {% if note.notification_type == 'friend_request' %}
-                <a href="{% url "profile" note.sender.username %}" class="text-decoration-none">{{ note.sender.username }}</a> sent you a friend request!
+                <a href="{% url "profile" note.sender.username %}" class="text-decoration-none">{{ note.sender.username }}</a> te enviou um pedido de amizade!
               {% elif note.notification_type == 'game_invite' %}
-                <a href="{% url "profile" note.sender.username %}" class="text-decoration-none">{{ note.sender.username }}</a> has invited you to their lobby!
+                <a href="{% url "profile" note.sender.username %}" class="text-decoration-none">{{ note.sender.username }}</a> te convidou para o lobby dele!
               {% endif %}
             </p>
             <small class="text-muted" style="font-size: 0.75rem;">{{ note.created_at|timesince }} ago</small>
@@ -29,7 +29,7 @@
                   hx-swap="outerHTML">
               {% csrf_token %}
               <input type="hidden" name="action" value="accept">
-              <button type="submit" class="btn btn-sm btn-success rounded-4 px-3 fw-bold">Accept</button>
+              <button type="submit" class="btn btn-sm btn-success rounded-4 px-3 fw-bold">Aceitar</button>
             </form>
 
             <form hx-post="{% url 'notification_action' note.id %}" 
@@ -37,7 +37,7 @@
                   hx-swap="outerHTML">
               {% csrf_token %}
               <input type="hidden" name="action" value="reject">
-              <button type="submit" class="btn btn-sm btn-outline-danger rounded-4 px-3 fw-bold">Decline</button>
+              <button type="submit" class="btn btn-sm btn-outline-danger rounded-4 px-3 fw-bold">Recusar</button>
             </form>
           </div>
 
@@ -46,8 +46,8 @@
     {% empty %}
       <div id="empty-inbox-msg" class="text-center py-5 text-muted">
         <i class="bi bi-envelope-open display-1 mb-3 d-block"></i>
-        <p class="fs-5 m-0">Your inbox is empty.</p>
-        <p class="small">You're all caught up!</p>
+        <p class="fs-5 m-0">Sua caixa de entrada está vazia.</p>
+        <p class="small">Você já está por dentro de tudo!</p>
       </div>
     {% endfor %}
   </div>
